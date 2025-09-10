@@ -2,10 +2,13 @@ from fastapi import APIRouter, HTTPException
 from datetime import datetime
 from app.database import check_database_health
 
-router = APIRouter()
+router = APIRouter(
+    prefix='/health',
+    tags=['health']
+)
 
 
-@router.get("/health")
+@router.get("")
 async def health_check():
     """Application health check endpoint"""
     try:
@@ -29,7 +32,7 @@ async def health_check():
         )
 
 
-@router.get("/health/ready")
+@router.get("/ready")
 async def readiness_check():
     """Kubernetes readiness probe endpoint"""
     db_health = await check_database_health()
@@ -43,7 +46,7 @@ async def readiness_check():
     return {"status": "ready"}
 
 
-@router.get("/health/live")
+@router.get("/live")
 async def liveness_check():
     """Kubernetes liveness probe endpoint"""
     return {"status": "alive", "timestamp": datetime.utcnow()}

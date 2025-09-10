@@ -10,14 +10,11 @@ database: AsyncIOMotorDatabase = None
 
 logger = logging.getLogger(__name__)
 
-# Document models will be imported here when created
-# from app.models.chat import ChatMessage, ChatRoom
-# from app.models.user import UserProfile
+# Import MongoDB document models
+from app.models.messages import Message
 
 DOCUMENT_MODELS: List[Document] = [
-    # ChatMessage,
-    # ChatRoom,
-    # UserProfile,
+    Message,
 ]
 
 
