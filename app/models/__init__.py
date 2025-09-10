@@ -5,6 +5,7 @@ from .group_room_members import GroupRoomMember
 from .friendships import Friendship
 from .block_users import BlockUser
 from .messages import Message
+from .message_search import MessageSearch
 
 __all__ = [
     "User",
@@ -13,5 +14,6 @@ __all__ = [
     "GroupRoomMember",
     "Friendship",
     "BlockUser",
-    "Message"
+    "Message",
+    "MessageSearch"
 ]
