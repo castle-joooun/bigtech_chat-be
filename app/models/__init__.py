@@ -1,14 +1,16 @@
 from .users import User
 from .chat_rooms import ChatRoom
-from .room_members import RoomMember
+from .group_chat_rooms import GroupChatRoom
+from .group_room_members import GroupRoomMember
 from .friendships import Friendship
 from .block_users import BlockUser
 from .messages import Message
 
 __all__ = [
     "User",
-    "ChatRoom", 
-    "RoomMember",
+    "ChatRoom",
+    "GroupChatRoom",
+    "GroupRoomMember",
     "Friendship",
     "BlockUser",
     "Message"
