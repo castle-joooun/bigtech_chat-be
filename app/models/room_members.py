@@ -1,20 +1,5 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, DateTime, Boolean, String
-from app.database.mysql import Base
-
-
-class RoomMember(Base):
-    __tablename__ = "room_members"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False, index=True)
-    room_id = Column(Integer, nullable=False, index=True)
-    role = Column(String(20), default="member")  # owner, admin, member
-    is_active = Column(Boolean, default=True)
-    joined_at = Column(DateTime, default=datetime.utcnow)
-    left_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __repr__(self):
-        return f"<RoomMember(user_id={self.user_id}, room_id={self.room_id}, role={self.role})>"
+# NOTE: This file is deprecated in favor of group_room_members.py
+# 1:1 chat rooms (chat_rooms table) don't need separate membership tracking
+# since membership is implicit from user_id_1 and user_id_2 in the chat_rooms table
+# 
+# This file is kept for potential future use or migration purposes
