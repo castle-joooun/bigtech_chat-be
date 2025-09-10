@@ -1,3 +1,10 @@
+# TODO: Elasticsearch 도입 시 활성화
+# Elasticsearch용 메시지 검색 컬렉션 - 현재 미사용
+# 
+# 향후 Elasticsearch나 OpenSearch 도입 시 이 파일을 활성화하여
+# 고성능 전문 검색 기능을 구현할 예정
+
+"""
 from datetime import datetime
 from typing import Optional, List
 from beanie import Document
@@ -64,16 +71,16 @@ class MessageSearch(Document):
 
     @classmethod
     async def create_from_message(cls, message, username: str, room_name: Optional[str] = None, participants: List[int] = None):
-        """
+        '''
         Create a search index entry from a Message document
-        """
+        '''
         import re
         
         # Normalize content for better search
         content_normalized = message.content.lower().strip()
         
         # Extract keywords (simple implementation - can be enhanced with NLP)
-        keywords = re.findall(r'\b\w{3,}\b', content_normalized)
+        keywords = re.findall(r'\\b\\w{3,}\\b', content_normalized)
         keywords = list(set(keywords))  # Remove duplicates
         
         # Determine search priority based on message type
@@ -114,9 +121,9 @@ class MessageSearch(Document):
         limit: int = 50,
         skip: int = 0
     ):
-        """
+        '''
         Search messages with various filters
-        """
+        '''
         search_filter = {
             "is_searchable": True,
             "$or": [
@@ -146,12 +153,13 @@ class MessageSearch(Document):
         ]).skip(skip).limit(limit).to_list()
 
     async def update_search_data(self, **kwargs):
-        """
+        '''
         Update search-specific fields
-        """
+        '''
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
         
         self.updated_at = datetime.utcnow()
         return await self.save()
+"""

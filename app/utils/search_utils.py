@@ -1,3 +1,10 @@
+# TODO: Elasticsearch 도입 시 활성화
+# 검색 관련 유틸리티 함수들 - 현재 미사용
+# 
+# 향후 Elasticsearch나 OpenSearch 도입 시 이 파일을 활성화하여
+# 검색 인덱싱, 쿼리 빌딩, 검색 분석 기능을 구현할 예정
+
+"""
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import re
@@ -8,15 +15,15 @@ from app.models.messages import Message
 
 
 class SearchIndexer:
-    """
+    '''
     Utility class for managing message search indexing
-    """
+    '''
     
     @staticmethod
     async def index_message(message: Message, username: str, room_name: Optional[str] = None, participants: List[int] = None) -> MessageSearch:
-        """
+        '''
         Index a single message for search
-        """
+        '''
         return await MessageSearch.create_from_message(
             message=message,
             username=username,
@@ -26,7 +33,7 @@ class SearchIndexer:
     
     @staticmethod
     async def bulk_index_messages(messages_data: List[Dict[str, Any]]) -> List[MessageSearch]:
-        """
+        '''
         Bulk index multiple messages
         messages_data format: [
             {
@@ -36,7 +43,7 @@ class SearchIndexer:
                 'participants': List[int]
             }
         ]
-        """
+        '''
         tasks = []
         for data in messages_data:
             task = MessageSearch.create_from_message(
@@ -52,9 +59,9 @@ class SearchIndexer:
     
     @staticmethod
     async def update_search_index(message_id: str, **update_data) -> Optional[MessageSearch]:
-        """
+        '''
         Update existing search index entry
-        """
+        '''
         search_doc = await MessageSearch.find_one({"message_id": message_id})
         if search_doc:
             return await search_doc.update_search_data(**update_data)
@@ -62,9 +69,9 @@ class SearchIndexer:
     
     @staticmethod
     async def remove_from_search_index(message_id: str) -> bool:
-        """
+        '''
         Remove message from search index
-        """
+        '''
         search_doc = await MessageSearch.find_one({"message_id": message_id})
         if search_doc:
             await search_doc.delete()
@@ -73,17 +80,17 @@ class SearchIndexer:
 
 
 class SearchQueryBuilder:
-    """
+    '''
     Utility class for building search queries
-    """
+    '''
     
     @staticmethod
     def build_text_search_query(query: str) -> str:
-        """
+        '''
         Build optimized text search query
-        """
+        '''
         # Remove special characters and normalize
-        query = re.sub(r'[^\w\s]', ' ', query)
+        query = re.sub(r'[^\\w\\s]', ' ', query)
         query = ' '.join(query.split())  # Remove extra spaces
         
         # Add phrase search for exact matches
@@ -102,9 +109,9 @@ class SearchQueryBuilder:
         date_to: Optional[datetime] = None,
         language: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
+        '''
         Build filter conditions for search
-        """
+        '''
         conditions = {
             "is_searchable": True,
             "$or": [
@@ -138,15 +145,15 @@ class SearchQueryBuilder:
 
 
 class SearchAnalytics:
-    """
+    '''
     Utility class for search analytics and optimization
-    """
+    '''
     
     @staticmethod
     async def get_search_statistics() -> Dict[str, Any]:
-        """
+        '''
         Get search index statistics
-        """
+        '''
         total_docs = await MessageSearch.count()
         
         # Count by room type
@@ -178,9 +185,9 @@ class SearchAnalytics:
     
     @staticmethod
     async def get_popular_keywords(limit: int = 100) -> List[Dict[str, Any]]:
-        """
+        '''
         Get most popular keywords from search index
-        """
+        '''
         pipeline = [
             {"$match": {"is_searchable": True}},
             {"$unwind": "$content_keywords"},
@@ -202,9 +209,9 @@ class SearchAnalytics:
     
     @staticmethod
     async def cleanup_old_search_entries(days_old: int = 90) -> int:
-        """
+        '''
         Clean up old search entries that are no longer needed
-        """
+        '''
         cutoff_date = datetime.utcnow() - timedelta(days=days_old)
         
         old_entries = await MessageSearch.find({
@@ -233,9 +240,9 @@ async def search_messages_advanced(
     limit: int = 50,
     skip: int = 0
 ) -> List[MessageSearch]:
-    """
+    '''
     Advanced message search with multiple filters
-    """
+    '''
     # Build search query
     search_query = SearchQueryBuilder.build_text_search_query(query)
     
@@ -264,9 +271,9 @@ async def search_messages_advanced(
 
 
 async def get_search_suggestions(partial_query: str, user_id: int, limit: int = 10) -> List[str]:
-    """
+    '''
     Get search suggestions based on partial query
-    """
+    '''
     if len(partial_query) < 2:
         return []
     
@@ -294,3 +301,4 @@ async def get_search_suggestions(partial_query: str, user_id: int, limit: int = 
     
     results = await MessageSearch.aggregate(pipeline).to_list()
     return [result["suggestion"] for result in results]
+"""

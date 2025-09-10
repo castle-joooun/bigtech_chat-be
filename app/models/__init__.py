@@ -5,7 +5,7 @@ from .group_room_members import GroupRoomMember
 from .friendships import Friendship
 from .block_users import BlockUser
 from .messages import Message
-from .message_search import MessageSearch
+# from .message_search import MessageSearch  # TODO: Elasticsearch 도입 시 활성화
 
 __all__ = [
     "User",
@@ -15,5 +15,5 @@ __all__ = [
     "Friendship",
     "BlockUser",
     "Message",
-    "MessageSearch"
+    # "MessageSearch"  # TODO: Elasticsearch 도입 시 활성화
 ]

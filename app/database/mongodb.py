@@ -12,9 +12,11 @@ logger = logging.getLogger(__name__)
 
 # Import MongoDB document models
 from app.models.messages import Message
+# from app.models.message_search import MessageSearch  # TODO: Elasticsearch 도입 시 활성화
 
 DOCUMENT_MODELS: List[Document] = [
     Message,
+    # MessageSearch,  # TODO: Elasticsearch 도입 시 활성화
 ]
 
 
