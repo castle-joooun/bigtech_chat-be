@@ -38,7 +38,7 @@ services:
       - MYSQL_USER=chatuser
       - MYSQL_PASSWORD=chatpass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init-mysql.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -75,7 +75,7 @@ services:
   # Redis (캐싱 및 Rate Limiting용)
   redis:
     image: redis:7.2-alpine
-    container_name: bigtech_chat_redis
+    container_name: lucid_mclaren_redis
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --tcp-keepalive 60 --timeout 300
@@ -96,7 +96,7 @@ services:
   # RedisInsight - Redis 관리 도구
   redisinsight:
     image: redislabs/redisinsight:latest
-    container_name: bigtech_chat_redisinsight
+    container_name: lucid_mclaren_redisinsight
     ports:
       - "8001:8001"
     volumes:
