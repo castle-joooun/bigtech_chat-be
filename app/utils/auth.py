@@ -1,18 +1,16 @@
 import os
 import re
+import secrets
 from datetime import datetime, timedelta
-from typing import Annotated, Optional
+from typing import Optional, Dict, Any
 
-from fastapi import Depends, HTTPException, status, Header, Request
+from fastapi import HTTPException, status
 from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 
-# from app.models.user import User
-# from app.services import user as user_service
+from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 
 def verify_password(plain_password, hashed_password):
@@ -23,101 +21,65 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def password_validator(password: str):
-    special_symbols = r'!"#$%&\'()*+-/:;<=>?@[₩]^_`{|}~'
-    escaped_symbols = re.escape(special_symbols)
+def validate_password(password: str) -> bool:
+    """
+    비밀번호 검증
+    - 8-16자
+    - 영문자, 숫자, 특수문자 포함
+    """
+    if len(password) < 8 or len(password) > 16:
+        return False
 
-    pattern = re.compile(
-        rf'^(?=.*[a-zA-Z])'  # 영문자 1개 이상
-        rf'(?=.*\d)'  # 숫자 1개 이상
-        rf'(?=.*[{escaped_symbols}])'  # 특수문자 1개 이상
-        rf'[a-zA-Z\d{escaped_symbols}]{{8,16}}$'  # 전체 구성
-    )
+    special_symbols = r'!"#$%&\'()*+,\-.\/:;<=>?@[\\\]^_`{|}~'
 
-    if not re.match(pattern, password):
-        raise HTTPException(status_code=400, detail='Invalid password')
-    return get_password_hash(password)
+    # 영문자, 숫자, 특수문자 각각 1개 이상 포함 확인
+    has_letter = bool(re.search(r'[a-zA-Z]', password))
+    has_digit = bool(re.search(r'\d', password))
+    has_special = bool(re.search(rf'[{re.escape(special_symbols)}]', password))
+
+    return has_letter and has_digit and has_special
 
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
+def create_access_token(data: Dict[str, Any],
+                        expires_delta: Optional[timedelta] = None) -> str:
+    """JWT 액세스 토큰 생성"""
     to_encode = data.copy()
+
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = (datetime.utcnow() +
-                  timedelta(minutes=60*int(os.getenv('ACCESS_TOKEN_EXPIRE_HOURS'))))
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, os.getenv('SECRET_KEY'), algorithm=os.getenv('ALGORITHM'))
+        expire = datetime.utcnow() + timedelta(
+            hours=settings.access_token_expire_hours)
+
+    to_encode.update({"exp": expire, "type": "access"})
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key,
+                             algorithm=settings.algorithm)
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Optional[User]:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+# refresh_token 기능은 MVP에서 제거됨
+
+
+def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
+    """JWT 액세스 토큰 디코드"""
     try:
-        if token is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Dose not have token",
-            )
-
-        payload = jwt.decode(token, os.getenv('SECRET_KEY'), algorithms=[os.getenv('ALGORITHM')])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        user = await user_service.get_user_item(username)
-    except JWTError:
-        raise credentials_exception
-
-    return user
-
-
-async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)]
-):
-
-    return current_user
-
-
-async def get_optional_user(request: Request) -> Optional[User]:
-    print(request.headers)
-    auth_header: str = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        print("[DEBUG] Authorization header 없음 또는 형식 이상:", auth_header)
-        return None
-
-    token = auth_header.removeprefix("Bearer ").strip()
-    print("[DEBUG] 추출된 토큰:", token)
-
-    try:
-        payload = jwt.decode(token, os.getenv('SECRET_KEY'), algorithms=[os.getenv('ALGORITHM')])
-        print("[DEBUG] 디코딩된 payload:", payload)
-        username: str = payload.get("sub")
-        if not username:
-            print("[DEBUG] payload에 'sub' 없음")
+        payload = jwt.decode(token, settings.secret_key,
+                             algorithms=[settings.algorithm])
+        # 액세스 토큰인지 확인
+        if payload.get("type") != "access":
             return None
-
-        user = await user_service.get_user_item(username)
-        if not user:
-            print("[DEBUG] user_service.get_user_item 결과 없음")
-        return user
-    except JWTError as e:
-        print("[DEBUG] JWT 디코딩 실패:", str(e))
-        return None
-
-
-async def get_optional_user_from_token(token: Optional[str]) -> Optional[User]:
-    if not token:
-        return None
-    try:
-        payload = jwt.decode(token, os.getenv('SECRET_KEY'), algorithms=[os.getenv('ALGORITHM')])
-        username = payload.get("sub")
-        if not username:
-            return None
-        return await user_service.get_user_item(username)
+        return payload
     except JWTError:
         return None
 
+
+# refresh_token 기능은 MVP에서 제거됨
+
+
+# CSRF 기능은 MVP에서 제거됨
+
+
+# CSRF 기능은 MVP에서 제거됨
+
+
+# CSRF 기능은 MVP에서 제거됨

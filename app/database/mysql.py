@@ -42,6 +42,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+# Alias for consistency with naming convention
+get_async_session = get_db
+
+
 async def init_mysql_db():
     """Initialize MySQL database"""
     try:

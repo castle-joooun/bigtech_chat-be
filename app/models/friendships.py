@@ -10,9 +10,10 @@ class Friendship(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id_1 = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)  # Friend requester
     user_id_2 = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)  # Friend target
-    status = Column(String(20), default="pending")  # pending, accepted, rejected
+    status = Column(String(20), default="pending")  # pending, accepted (rejected는 soft delete 처리)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)  # soft delete를 위한 필드
     
     # Relationships
     requester = relationship("User", foreign_keys=[user_id_1], back_populates="friendship_requests")

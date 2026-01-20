@@ -1,0 +1,21 @@
+{
+  "name": "bigtech_chat-be",
+  "version": "1.0.0",
+  "description": "실시간 채팅 애플리케이션의 백엔드 서비스입니다. FastAPI를 기반으로 하며, MySQL과 MongoDB를 활용한 하이브리드 데이터베이스 아키텍처를 사용합니다.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/castle-joooun/bigtech_chat-be.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/castle-joooun/bigtech_chat-be/issues"
+  },
+  "homepage": "https://github.com/castle-joooun/bigtech_chat-be#readme",
+  "dependencies": {}
+}

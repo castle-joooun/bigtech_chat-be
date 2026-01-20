@@ -9,6 +9,7 @@ services:
     environment:
       - MONGO_URL=mongodb://mongodb:27017
       - MYSQL_URL=mysql+aiomysql://chatuser:chatpass@mysql:3306/chatdb
+      - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=your-super-secret-key-change-in-production
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_HOURS=24
@@ -71,26 +72,46 @@ services:
     networks:
       - chat-network
 
-  # Redis (for future caching)
+  # Redis (캐싱 및 Rate Limiting용)
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
+    container_name: bigtech_chat_redis
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --tcp-keepalive 60 --timeout 300
     volumes:
       - redis_data:/data
+    environment:
+      - REDIS_REPLICATION_MODE=master
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 40s
     restart: unless-stopped
     networks:
       - chat-network
+
+  # RedisInsight - Redis 관리 도구
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: bigtech_chat_redisinsight
+    ports:
+      - "8001:8001"
+    volumes:
+      - redisinsight_data:/db
+    networks:
+      - chat-network
+    depends_on:
+      - redis
+    restart: unless-stopped
 
 volumes:
   mysql_data:
   mongodb_data:
   redis_data:
+  redisinsight_data:
 
 networks:
   chat-network:

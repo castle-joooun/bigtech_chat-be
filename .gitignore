@@ -291,8 +291,10 @@ pyrightconfig.json
 
 *.rdb
 *.venv
+.env.*
 
 # End of https://www.toptal.com/developers/gitignore/api/python,redis,pycharm
 
 # Claude Code documentation
 CLAUDE.md
+.claude*

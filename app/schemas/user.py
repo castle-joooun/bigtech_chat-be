@@ -20,7 +20,6 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, description="이메일")
     username: Optional[str] = Field(None, min_length=3, max_length=50, description="사용자명")
     display_name: Optional[str] = Field(None, max_length=100, description="표시명")
-    is_active: Optional[bool] = Field(None, description="활성화 상태")
 
 
 class UserLogin(BaseModel):
@@ -34,7 +33,6 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: int = Field(..., description="사용자 ID")
-    is_active: bool = Field(..., description="활성화 상태")
     created_at: datetime = Field(..., description="생성일시")
     updated_at: datetime = Field(..., description="수정일시")
 
@@ -42,18 +40,44 @@ class UserResponse(UserBase):
 class UserProfile(BaseModel):
     """사용자 프로필 스키마 (민감한 정보 제외)"""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int = Field(..., description="사용자 ID")
     username: str = Field(..., description="사용자명")
     display_name: Optional[str] = Field(None, description="표시명")
-    is_active: bool = Field(..., description="활성화 상태")
+    status_message: Optional[str] = Field(None, description="상태 메시지")
+    profile_image_url: Optional[str] = Field(None, description="프로필 이미지 URL")
+    is_online: bool = Field(default=False, description="온라인 상태")
+    last_seen_at: Optional[datetime] = Field(None, description="마지막 접속 시간")
+
+
+class ProfileUpdateRequest(BaseModel):
+    """프로필 수정 요청 스키마"""
+    display_name: Optional[str] = Field(None, max_length=100, description="표시명")
+    status_message: Optional[str] = Field(None, max_length=500, description="상태 메시지")
+
+
+class UserSearchRequest(BaseModel):
+    """사용자 검색 요청 스키마"""
+    query: str = Field(..., min_length=1, max_length=50, description="검색 키워드")
+    limit: Optional[int] = Field(default=10, ge=1, le=50, description="검색 결과 개수")
+
+
+class UserSearchResponse(BaseModel):
+    """사용자 검색 응답 스키마"""
+    users: List[UserProfile] = Field(..., description="검색된 사용자 목록")
+    total_count: int = Field(..., description="전체 검색 결과 수")
+
+
+class OnlineStatusUpdate(BaseModel):
+    """온라인 상태 업데이트 스키마"""
+    is_online: bool = Field(..., description="온라인 상태")
 
 
 class Token(BaseModel):
-    """토큰 스키마"""
+    """토큰 스키마 (단순화된 MVP 버전)"""
     access_token: str = Field(..., description="액세스 토큰")
     token_type: str = Field(default="bearer", description="토큰 타입")
-    expires_in: int = Field(..., description="만료 시간(초)")
+    expires_in: int = Field(..., description="액세스 토큰 만료 시간(초)")
 
 
 class TokenData(BaseModel):
@@ -64,13 +88,6 @@ class TokenData(BaseModel):
 
 class UserWithRelations(UserResponse):
     """관계 데이터가 포함된 사용자 스키마"""
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from .chat_room import ChatRoomResponse
-        from .friendship import FriendshipResponse
-        from .group_chat_room import GroupChatRoomResponse
-        from .group_room_member import GroupRoomMemberResponse
-        from .block_user import BlockUserResponse
     
     # 1:1 채팅방 관계
     chat_rooms_as_user_1: Optional[List["ChatRoomResponse"]] = Field(default=None, description="사용자1로 참여한 채팅방")

@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database.mysql import Base
 
@@ -9,11 +9,8 @@ class GroupChatRoom(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    is_private = Column(Boolean, default=False)  # Private group vs Public group
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # User ID who created the group
-    max_members = Column(Integer, default=100)
-    is_active = Column(Boolean, default=True)
+    max_members = Column(Integer, default=50)  # 고정값으로 단순화
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

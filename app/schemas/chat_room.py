@@ -6,43 +6,37 @@ if TYPE_CHECKING:
     from .user import UserProfile
 
 
-class ChatRoomBase(BaseModel):
-    """1:1 채팅방 기본 스키마"""
-    user_id_1: int = Field(..., description="첫 번째 사용자 ID")
-    user_id_2: int = Field(..., description="두 번째 사용자 ID")
-
-
-class ChatRoomCreate(ChatRoomBase):
+class ChatRoomCreate(BaseModel):
     """1:1 채팅방 생성 스키마"""
-    pass
+    participant_id: int = Field(..., description="상대방 사용자 ID")
 
 
-class ChatRoomUpdate(BaseModel):
-    """1:1 채팅방 수정 스키마"""
-    is_active: Optional[bool] = Field(None, description="활성화 상태")
+# ChatRoomUpdate 스키마는 MVP에서 제거됨 (복잡한 개인 설정 기능 제거)
 
 
-class ChatRoomResponse(ChatRoomBase):
-    """1:1 채팅방 응답 스키마"""
+class ChatRoomResponse(BaseModel):
+    """1:1 채팅방 응답 스키마 (단순화된 MVP 버전)"""
     model_config = ConfigDict(from_attributes=True)
     
     id: int = Field(..., description="채팅방 ID")
-    is_active: bool = Field(..., description="활성화 상태")
+    user_1_id: int = Field(..., description="사용자 1 ID")
+    user_2_id: int = Field(..., description="사용자 2 ID")
+    room_type: str = Field(default="direct", description="채팅방 타입")
     created_at: datetime = Field(..., description="생성일시")
     updated_at: datetime = Field(..., description="수정일시")
+    
+    # 테스트에서 필요한 추가 필드들
+    participants: Optional[List[dict]] = Field(default=None, description="참여자 정보")
+    last_message: Optional[str] = Field(default=None, description="마지막 메시지")
 
 
-class ChatRoomWithUsers(ChatRoomResponse):
-    """사용자 정보가 포함된 1:1 채팅방 스키마"""
-    user_1: Optional["UserProfile"] = Field(None, description="첫 번째 사용자 정보")
-    user_2: Optional["UserProfile"] = Field(None, description="두 번째 사용자 정보")
-    last_message: Optional[dict] = Field(None, description="마지막 메시지")
-    unread_count: int = Field(default=0, description="읽지 않은 메시지 수")
+# ChatRoomListItem 스키마는 MVP에서 제거됨 (복잡한 개인화 기능 제거)
 
 
-class ChatRoomList(BaseModel):
-    """채팅방 목록 스키마"""
-    rooms: List[ChatRoomWithUsers] = Field(..., description="채팅방 목록")
-    total: int = Field(..., description="전체 채팅방 수")
-    page: int = Field(..., description="현재 페이지")
-    limit: int = Field(..., description="페이지당 항목 수")
+# ChatRoomListResponse 스키마는 MVP에서 제거됨 (복잡한 목록 기능 제거)
+
+
+# ChatRoomDetail 스키마는 MVP에서 제거됨 (복잡한 상세 정보 기능 제거)
+
+
+# ChatRoomSettingsResponse 스키마는 MVP에서 제거됨 (개인 설정 기능 제거)

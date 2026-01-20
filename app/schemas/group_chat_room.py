@@ -8,11 +8,9 @@ if TYPE_CHECKING:
 
 
 class GroupChatRoomBase(BaseModel):
-    """그룹 채팅방 기본 스키마"""
+    """그룹 채팅방 기본 스키마 (단순화된 MVP 버전)"""
     name: str = Field(..., min_length=1, max_length=255, description="그룹 채팅방 이름")
-    description: Optional[str] = Field(None, description="그룹 채팅방 설명")
-    is_private: bool = Field(default=False, description="비공개 그룹 여부")
-    max_members: int = Field(default=100, ge=2, le=1000, description="최대 멤버 수")
+    max_members: int = Field(default=50, description="최대 멤버 수 (고정값 50)")
 
 
 class GroupChatRoomCreate(GroupChatRoomBase):
@@ -21,21 +19,16 @@ class GroupChatRoomCreate(GroupChatRoomBase):
 
 
 class GroupChatRoomUpdate(BaseModel):
-    """그룹 채팅방 수정 스키마"""
+    """그룹 채팅방 수정 스키마 (단순화된 MVP 버전)"""
     name: Optional[str] = Field(None, min_length=1, max_length=255, description="그룹 채팅방 이름")
-    description: Optional[str] = Field(None, description="그룹 채팅방 설명")
-    is_private: Optional[bool] = Field(None, description="비공개 그룹 여부")
-    max_members: Optional[int] = Field(None, ge=2, le=1000, description="최대 멤버 수")
-    is_active: Optional[bool] = Field(None, description="활성화 상태")
 
 
 class GroupChatRoomResponse(GroupChatRoomBase):
-    """그룹 채팅방 응답 스키마"""
+    """그룹 채팅방 응답 스키마 (단순화된 MVP 버전)"""
     model_config = ConfigDict(from_attributes=True)
     
     id: int = Field(..., description="그룹 채팅방 ID")
     created_by: int = Field(..., description="그룹 생성자 ID")
-    is_active: bool = Field(..., description="활성화 상태")
     created_at: datetime = Field(..., description="생성일시")
     updated_at: datetime = Field(..., description="수정일시")
 
