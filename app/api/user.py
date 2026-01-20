@@ -18,25 +18,25 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/search", response_model=UserSearchResponse)
 async def search_users(
-    query: str = Query(..., min_length=1, max_length=50, description="Ä… §Ã‹"),
-    limit: int = Query(default=10, ge=1, le=50, description="Ä… ∞¸ "),
+    query: str = Query(..., min_length=1, max_length=50, description="ÔøΩÔøΩ ÔøΩÔøΩÔøΩ"),
+    limit: int = Query(default=10, ge=1, le=50, description="ÔøΩÔøΩ ÔøΩÔøΩ "),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
 ) -> UserSearchResponse:
     """
-    ¨©êÖ<\ ¨©ê| Ä…i»‰.
+    ÔøΩÔøΩÔøΩÔøΩ<\ ÔøΩÔøΩÔøΩ| ÔøΩÔøΩiÔøΩÔøΩ.
 
     Args:
-        query: Ä… §Ã‹ (¨©êÖ î \‹Ö)
-        limit: Ä… ∞¸ 
-        current_user: ¨ xù ¨©ê
-        db: pt0†t§ 8X
+        query: ÔøΩÔøΩ ÔøΩÔøΩÔøΩ (ÔøΩÔøΩÔøΩÔøΩ ÔøΩ \‹Ö)
+        limit: ÔøΩÔøΩ ÔøΩÔøΩ 
+        current_user: ÔøΩ xÔøΩ ÔøΩÔøΩÔøΩ
+        db: pt0ÔøΩtÔøΩ 8X
 
     Returns:
-        UserSearchResponse: Ä… ∞¸
+        UserSearchResponse: ÔøΩÔøΩ ÔøΩÔøΩ
     """
     try:
-        # ¨©ê Ä… (¨ ¨©ê x)
+        # ÔøΩÔøΩÔøΩ ÔøΩÔøΩ (ÔøΩ ÔøΩÔøΩÔøΩ x)
         users = await auth_service.search_users_by_username(
             db=db,
             query=query,
@@ -44,14 +44,14 @@ async def search_users(
             exclude_user_id=current_user.id
         )
 
-        # ¥ Ä… ∞¸  på
+        # ÔøΩ ÔøΩÔøΩ ÔøΩÔøΩ  pÔøΩ
         total_count = await auth_service.get_user_count_by_query(
             db=db,
             query=query,
             exclude_user_id=current_user.id
         )
 
-        # UserProfile ‹\ ¿X
+        # UserProfile ÔøΩ\ ÔøΩX
         user_profiles = [UserProfile.model_validate(user) for user in users]
 
         return UserSearchResponse(
@@ -74,20 +74,20 @@ async def get_user_by_id(
     db: AsyncSession = Depends(get_async_session)
 ) -> UserProfile:
     """
-    ¨©ê ID\ ¨©ê Ù| påi»‰.
+    ÔøΩÔøΩÔøΩ ID\ ÔøΩÔøΩÔøΩ ÔøΩ| pÔøΩiÔøΩÔøΩ.
 
     Args:
-        user_id: på` ¨©ê ID
-        current_user: ¨ xù ¨©ê
-        db: pt0†t§ 8X
+        user_id: pÔøΩ` ÔøΩÔøΩÔøΩ ID
+        current_user: ÔøΩ xÔøΩ ÔøΩÔøΩÔøΩ
+        db: pt0ÔøΩtÔøΩ 8X
 
     Returns:
-        UserProfile: ¨©ê \D Ù
+        UserProfile: ÔøΩÔøΩÔøΩ \D ÔøΩ
     """
-    # Ö% Äù
+    # ÔøΩ% ÔøΩÔøΩ
     user_id = Validator.validate_positive_integer(user_id, "user_id")
 
-    # ¨©ê på
+    # ÔøΩÔøΩÔøΩ pÔøΩ
     user = await auth_service.find_user_by_id(db, user_id)
     if not user:
         raise ResourceNotFoundException("User")
@@ -97,23 +97,23 @@ async def get_user_by_id(
 
 @router.get("", response_model=List[UserProfile])
 async def get_users_by_ids(
-    user_ids: str = Query(..., description="|\\ lÑ ¨©ê ID ©]"),
+    user_ids: str = Query(..., description="|\\ lÔøΩ ÔøΩÔøΩÔøΩ ID ÔøΩ]"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
 ) -> List[UserProfile]:
     """
-    ¨©ê ID ©]<\ ÏÏ ¨©ê Ù| påi»‰.
+    ÔøΩÔøΩÔøΩ ID ÔøΩ]<\ ÔøΩÔøΩ ÔøΩÔøΩÔøΩ ÔøΩ| pÔøΩiÔøΩÔøΩ.
 
     Args:
-        user_ids: |\\ lÑ ¨©ê ID ©] (: "1,2,3")
-        current_user: ¨ xù ¨©ê
-        db: pt0†t§ 8X
+        user_ids: |\\ lÔøΩ ÔøΩÔøΩÔøΩ ID ÔøΩ] (: "1,2,3")
+        current_user: ÔøΩ xÔøΩ ÔøΩÔøΩÔøΩ
+        db: pt0ÔøΩtÔøΩ 8X
 
     Returns:
-        List[UserProfile]: ¨©ê \D ©]
+        List[UserProfile]: ÔøΩÔøΩÔøΩ \D ÔøΩ]
     """
     try:
-        # ¨©ê ID ©] Ò
+        # ÔøΩÔøΩÔøΩ ID ÔøΩ] ÔøΩ
         id_list = []
         for id_str in user_ids.split(','):
             try:
@@ -129,10 +129,10 @@ async def get_users_by_ids(
                 detail="Invalid user IDs provided"
             )
 
-        # ¨©ê‰ på
+        # ÔøΩÔøΩÔøΩÔøΩ pÔøΩ
         users = await auth_service.get_users_by_ids(db, id_list)
 
-        # UserProfile ‹\ ¿X
+        # UserProfile ÔøΩ\ ÔøΩX
         user_profiles = [UserProfile.model_validate(user) for user in users]
 
         return user_profiles

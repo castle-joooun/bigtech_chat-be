@@ -25,12 +25,53 @@ from app.core.errors import (
 )
 from app.core.validators import validate_user_registration, validate_user_login
 from app.services import auth_service
-from app.services.online_status_service import set_online, set_offline, update_activity
+from app.services.online_status_service import set_online, set_offline, \
+    update_activity
 
 # OAuth2 설정
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+async def get_current_user(
+        token: str = Depends(oauth2_scheme),
+        db: AsyncSession = Depends(get_async_session)
+) -> User:
+    """
+    현재 인증된 사용자 조회 (단순화된 MVP 버전)
+    """
+
+    # 토큰 검증
+    payload = decode_access_token(token)
+    if not payload:
+        raise invalid_token_error()
+
+    # 사용자 조회
+    user_id = payload.get("sub")
+    if not user_id:
+        raise invalid_token_error()
+
+    user = await auth_service.find_user_by_id(db, int(user_id))
+    if not user:
+        raise user_not_found_error(user_id)
+
+    # 사용자 활동 시간 업데이트 (heartbeat)
+    await update_activity(user.id)
+
+    return user
+
+
+async def get_optional_user(
+        token: str = Depends(oauth2_scheme),
+        db: AsyncSession = Depends(get_async_session)
+) -> Optional[User]:
+    """
+    선택적 사용자 인증 (토큰이 유효하지 않아도 None 반환)
+    """
+    try:
+        return await get_current_user(token, db)
+    except:
+        return None
 
 
 @router.post("/register",
@@ -101,7 +142,8 @@ async def login(
     )
 
     # Redis에 온라인 상태 저장
-    await set_online(user.id, session_id=f"login_{user.id}_{access_token[:10]}")
+    await set_online(user.id,
+                     session_id=f"login_{user.id}_{access_token[:10]}")
 
     return Token(
         access_token=access_token,
@@ -124,44 +166,3 @@ async def logout(
         "message": "Successfully logged out",
         "user_id": current_user.id
     }
-
-
-async def get_current_user(
-        token: str = Depends(oauth2_scheme),
-        db: AsyncSession = Depends(get_async_session)
-) -> User:
-    """
-    현재 인증된 사용자 조회 (단순화된 MVP 버전)
-    """
-
-    # 토큰 검증
-    payload = decode_access_token(token)
-    if not payload:
-        raise invalid_token_error()
-
-    # 사용자 조회
-    user_id = payload.get("sub")
-    if not user_id:
-        raise invalid_token_error()
-
-    user = await auth_service.find_user_by_id(db, int(user_id))
-    if not user:
-        raise user_not_found_error(user_id)
-
-    # 사용자 활동 시간 업데이트 (heartbeat)
-    await update_activity(user.id)
-
-    return user
-
-
-async def get_optional_user(
-        token: str = Depends(oauth2_scheme),
-        db: AsyncSession = Depends(get_async_session)
-) -> Optional[User]:
-    """
-    선택적 사용자 인증 (토큰이 유효하지 않아도 None 반환)
-    """
-    try:
-        return await get_current_user(token, db)
-    except:
-        return None
