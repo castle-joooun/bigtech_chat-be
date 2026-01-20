@@ -49,6 +49,12 @@ get_async_session = get_db
 async def init_mysql_db():
     """Initialize MySQL database"""
     try:
+        # Import all models to register them with Base.metadata
+        from app.models import (
+            User, ChatRoom, RoomMember, GroupChatRoom,
+            GroupRoomMember, Friendship, BlockUser
+        )
+
         async with engine.begin() as conn:
             # Create all tables
             await conn.run_sync(Base.metadata.create_all)

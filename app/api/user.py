@@ -18,25 +18,25 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/search", response_model=UserSearchResponse)
 async def search_users(
-    query: str = Query(..., min_length=1, max_length=50, description="�� ���"),
-    limit: int = Query(default=10, ge=1, le=50, description="�� �� "),
+    query: str = Query(..., min_length=1, max_length=50, description="검색 쿼리"),
+    limit: int = Query(default=10, ge=1, le=50, description="결과 개수"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
 ) -> UserSearchResponse:
     """
-    ����<\ ���| ��i��.
+    사용자를 검색합니다.
 
     Args:
-        query: �� ��� (���� � \܅)
-        limit: �� �� 
-        current_user: � x� ���
-        db: pt0�t� 8X
+        query: 검색 쿼리 (사용자명 또는 이메일)
+        limit: 결과 개수
+        current_user: 현재 사용자
+        db: 데이터베이스 세션
 
     Returns:
-        UserSearchResponse: �� ��
+        UserSearchResponse: 검색 결과
     """
     try:
-        # ��� �� (� ��� x)
+        # 사용자 검색 (자신 제외)
         users = await auth_service.search_users_by_username(
             db=db,
             query=query,
@@ -44,14 +44,14 @@ async def search_users(
             exclude_user_id=current_user.id
         )
 
-        # � �� ��  p�
+        # 전체 검색 결과 수
         total_count = await auth_service.get_user_count_by_query(
             db=db,
             query=query,
             exclude_user_id=current_user.id
         )
 
-        # UserProfile �\ �X
+        # UserProfile 스키마 변환
         user_profiles = [UserProfile.model_validate(user) for user in users]
 
         return UserSearchResponse(
@@ -74,20 +74,20 @@ async def get_user_by_id(
     db: AsyncSession = Depends(get_async_session)
 ) -> UserProfile:
     """
-    ��� ID\ ��� �| p�i��.
+    특정 ID의 사용자를 조회합니다.
 
     Args:
-        user_id: p�` ��� ID
-        current_user: � x� ���
-        db: pt0�t� 8X
+        user_id: 조회할 사용자 ID
+        current_user: 현재 사용자
+        db: 데이터베이스 세션
 
     Returns:
-        UserProfile: ��� \D �
+        UserProfile: 사용자 프로필
     """
-    # �% ��
+    # 입력 검증
     user_id = Validator.validate_positive_integer(user_id, "user_id")
 
-    # ��� p�
+    # 사용자 조회
     user = await auth_service.find_user_by_id(db, user_id)
     if not user:
         raise ResourceNotFoundException("User")
@@ -97,23 +97,24 @@ async def get_user_by_id(
 
 @router.get("", response_model=List[UserProfile])
 async def get_users_by_ids(
-    user_ids: str = Query(..., description="|\\ l� ��� ID �]"),
+    user_ids: str = Query(..., description="쉼표로 구분된 사용자 ID 목록"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
 ) -> List[UserProfile]:
     """
-    ��� ID �]<\ �� ��� �| p�i��.
+<<<<<<< HEAD
+    사용자 ID 목록으로 여러 사용자를 조회합니다.
 
     Args:
-        user_ids: |\\ l� ��� ID �] (: "1,2,3")
-        current_user: � x� ���
-        db: pt0�t� 8X
+        user_ids: 쉼표로 구분된 사용자 ID 목록 (예: "1,2,3")
+        current_user: 현재 사용자
+        db: 데이터베이스 세션
 
     Returns:
-        List[UserProfile]: ��� \D �]
+        List[UserProfile]: 사용자 프로필 목록
     """
     try:
-        # ��� ID �] �
+        # 사용자 ID 목록 파싱
         id_list = []
         for id_str in user_ids.split(','):
             try:
@@ -129,10 +130,10 @@ async def get_users_by_ids(
                 detail="Invalid user IDs provided"
             )
 
-        # ���� p�
+        # 사용자들 조회
         users = await auth_service.get_users_by_ids(db, id_list)
 
-        # UserProfile �\ �X
+        # UserProfile 스키마 변환
         user_profiles = [UserProfile.model_validate(user) for user in users]
 
         return user_profiles
