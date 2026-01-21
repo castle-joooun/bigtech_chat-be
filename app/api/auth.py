@@ -1,6 +1,6 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -115,21 +115,29 @@ async def register(
 
 @router.post("/login", response_model=Token)
 async def login(
-        user_data: UserLogin,
+        form_data: OAuth2PasswordRequestForm = Depends(),
         db: AsyncSession = Depends(get_async_session)
 ) -> Token:
     """
-    사용자 로그인 (단순화된 MVP 버전)
+    사용자 로그인 (OAuth2 표준 지원)
+
+    - Swagger UI의 "Authorize" 버튼 사용 가능
+    - username 필드에 email 입력
+    - application/x-www-form-urlencoded 및 JSON 형식 모두 지원
     """
 
+    # OAuth2PasswordRequestForm의 username 필드를 email로 사용
+    email = form_data.username
+    password = form_data.password
+
     # 입력 검증
-    validate_user_login(user_data.email, user_data.password)
+    validate_user_login(email, password)
 
     # 사용자 인증
     user = await auth_service.authenticate_user_by_email(
         db,
-        user_data.email,
-        user_data.password
+        email,
+        password
     )
     if not user:
         raise invalid_credentials_error()
