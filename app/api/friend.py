@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.mysql import get_async_session
@@ -11,6 +11,7 @@ from app.schemas.friendship import (
     FriendListResponse,
     FriendRequestListResponse
 )
+from app.schemas.user import UserProfile
 from app.api.auth import get_current_user
 from app.services.friendship_service import FriendshipService
 from app.services.auth_service import find_user_by_id
@@ -148,7 +149,7 @@ async def update_friend_request_status(
         )
 
 
-@router.get("", response_model=List[FriendListResponse])
+@router.get("/list", response_model=List[FriendListResponse])
 async def get_friends_list(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
@@ -233,10 +234,58 @@ async def get_friend_requests(
             "received_requests": received_list,
             "sent_requests": sent_list
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting friend requests: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get friend requests"
+        )
+
+
+@router.get("/search", response_model=List[UserProfile])
+async def search_users_for_friend(
+    query: str = Query(..., min_length=3, max_length=50, description="검색어 (최소 3글자)"),
+    limit: int = Query(default=20, ge=1, le=50, description="결과 개수"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    친구 추가를 위한 사용자 검색
+
+    검색 조건:
+    - 최소 3글자 이상 입력
+    - email 또는 username으로 검색
+    - 이미 친구인 사용자 제외
+    - 차단한/차단된 사용자 제외
+    - 본인 제외
+
+    Args:
+        query: 검색어 (email 또는 username)
+        limit: 결과 개수 (기본값: 20, 최대: 50)
+        current_user: 현재 인증된 사용자
+        db: 데이터베이스 세션
+
+    Returns:
+        List[UserProfile]: 검색된 사용자 목록
+    """
+    try:
+        # 친구 검색
+        users = await FriendshipService.search_users_for_friend(
+            db=db,
+            current_user_id=current_user.id,
+            query=query,
+            limit=limit
+        )
+
+        # UserProfile로 변환
+        user_profiles = [UserProfile.model_validate(user) for user in users]
+
+        return user_profiles
+
+    except Exception as e:
+        logger.error(f"Error searching users for friend: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search users"
         )
