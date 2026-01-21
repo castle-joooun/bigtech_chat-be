@@ -114,16 +114,16 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
-async def login(
+async def login_oauth2(
         form_data: OAuth2PasswordRequestForm = Depends(),
         db: AsyncSession = Depends(get_async_session)
 ) -> Token:
     """
-    사용자 로그인 (OAuth2 표준 지원)
+    사용자 로그인 (OAuth2 표준, Swagger UI용)
 
-    - Swagger UI의 "Authorize" 버튼 사용 가능
+    - Swagger UI의 "Authorize" 버튼 전용
+    - application/x-www-form-urlencoded 형식
     - username 필드에 email 입력
-    - application/x-www-form-urlencoded 및 JSON 형식 모두 지원
     """
 
     # OAuth2PasswordRequestForm의 username 필드를 email로 사용
@@ -138,6 +138,49 @@ async def login(
         db,
         email,
         password
+    )
+    if not user:
+        raise invalid_credentials_error()
+
+    # 액세스 토큰 생성
+    access_token_expires = timedelta(hours=settings.access_token_expire_hours)
+    access_token = create_access_token(
+        data={"sub": str(user.id), "email": user.email},
+        expires_delta=access_token_expires
+    )
+
+    # Redis에 온라인 상태 저장
+    await set_online(user.id,
+                     session_id=f"login_{user.id}_{access_token[:10]}")
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=int(access_token_expires.total_seconds())
+    )
+
+
+@router.post("/login/json", response_model=Token)
+async def login_json(
+        user_data: UserLogin,
+        db: AsyncSession = Depends(get_async_session)
+) -> Token:
+    """
+    사용자 로그인 (JSON 형식, 클라이언트 앱용)
+
+    - JSON 형식 (application/json)
+    - email과 password 필드 사용
+    - 일반 클라이언트 앱에서 사용
+    """
+
+    # 입력 검증
+    validate_user_login(user_data.email, user_data.password)
+
+    # 사용자 인증
+    user = await auth_service.authenticate_user_by_email(
+        db,
+        user_data.email,
+        user_data.password
     )
     if not user:
         raise invalid_credentials_error()
