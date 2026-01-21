@@ -42,7 +42,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
-    lifespan=lifespan
+    lifespan=lifespan,
+    root_path="/api"
 )
 
 # CORS 미들웨어
@@ -107,7 +108,7 @@ async def root():
     return {"message": "BigTech Chat Backend API"}
 
 
-@app.get("/api/info")
+@app.get("/info")
 async def api_info():
     """API 정보 조회"""
     return {

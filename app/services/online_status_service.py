@@ -79,6 +79,19 @@ class OnlineStatusService:
 
             await pipe.execute()
 
+            # 5. Redis Pub/Sub으로 상태 변화 브로드캐스트
+            status_change_message = {
+                "user_id": user_id,
+                "is_online": True,
+                "last_activity": current_time,
+                "session_id": session_id,
+                "timestamp": current_time
+            }
+            await redis.publish(
+                f"user:status:{user_id}",
+                json.dumps(status_change_message)
+            )
+
             logger.info(f"User {user_id} set to online status", extra={
                 "user_id": user_id,
                 "session_id": session_id,
@@ -126,6 +139,18 @@ class OnlineStatusService:
             pipe.delete(USER_WEBSOCKET_KEY.format(user_id=user_id))
 
             await pipe.execute()
+
+            # 5. Redis Pub/Sub으로 상태 변화 브로드캐스트
+            status_change_message = {
+                "user_id": user_id,
+                "is_online": False,
+                "last_seen": current_time,
+                "timestamp": current_time
+            }
+            await redis.publish(
+                f"user:status:{user_id}",
+                json.dumps(status_change_message)
+            )
 
             logger.info(f"User {user_id} set to offline status", extra={
                 "user_id": user_id,

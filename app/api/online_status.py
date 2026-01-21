@@ -5,7 +5,8 @@
 """
 
 from typing import List, Dict
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
+from pydantic import BaseModel
 
 from app.models.users import User
 from app.api.auth import get_current_user
@@ -20,6 +21,11 @@ from app.database.mysql import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/online-status", tags=["Online Status"])
+
+
+class UserIdsRequest(BaseModel):
+    """여러 유저 ID 조회 요청"""
+    user_ids: List[int]
 
 
 @router.get("/users", response_model=List[Dict])
@@ -211,6 +217,35 @@ async def get_friends_status(
     except ImportError:
         # friendship_service가 아직 구현되지 않은 경우
         return []
+
+
+@router.post("/users")
+async def get_multiple_users_status(
+    request: UserIdsRequest,
+    current_user: User = Depends(get_current_user)
+) -> Dict[int, Dict]:
+    """
+    여러 사용자의 온라인 상태 일괄 조회
+
+    Request body:
+        {
+            "user_ids": [1, 2, 3, 4, 5]
+        }
+
+    Returns:
+        사용자 ID별 상태 정보 딕셔너리
+        {
+            "1": {"is_online": true, "last_activity": "..."},
+            "2": {"is_online": false, "last_seen": "..."}
+        }
+    """
+    if not request.user_ids:
+        return {}
+
+    # 여러 사용자의 상태 조회
+    statuses = await OnlineStatusService.get_users_status(request.user_ids)
+
+    return statuses
 
 
 @router.get("/cleanup")
