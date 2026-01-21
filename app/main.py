@@ -12,6 +12,8 @@ from app.api.websocket import router as websocket_router
 from app.api.friend import router as friend_router
 from app.api.profile import router as profile_router
 from app.api.user import router as user_router
+from app.api.online_status import router as online_status_router
+from app.api.presence import router as presence_router
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger
 # CSRF 미들웨어는 MVP에서 제거됨
@@ -95,6 +97,8 @@ app.include_router(websocket_router)
 app.include_router(friend_router)
 app.include_router(profile_router)
 app.include_router(user_router)
+app.include_router(online_status_router)
+app.include_router(presence_router)
 
 # 정적 파일 서빙 (업로드된 이미지들)
 uploads_dir = Path("uploads")
@@ -120,6 +124,6 @@ async def api_info():
             "친구 관리 시스템",
             "프로필 이미지 업로드",
             "사용자 검색",
-            "온라인 상태 관리"
+            "온라인 상태 관리 (SSE + Redis Pub/Sub)"
         ]
     }
