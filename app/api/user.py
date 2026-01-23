@@ -16,55 +16,55 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/search", response_model=UserSearchResponse)
-async def search_users(
-    query: str = Query(..., min_length=1, max_length=50, description="검색 쿼리"),
-    limit: int = Query(default=10, ge=1, le=50, description="결과 개수"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_session)
-) -> UserSearchResponse:
-    """
-    사용자를 검색합니다.
-
-    Args:
-        query: 검색 쿼리 (사용자명 또는 이메일)
-        limit: 결과 개수
-        current_user: 현재 사용자
-        db: 데이터베이스 세션
-
-    Returns:
-        UserSearchResponse: 검색 결과
-    """
-    try:
-        # 사용자 검색 (자신 제외)
-        users = await auth_service.search_users_by_username(
-            db=db,
-            query=query,
-            limit=limit,
-            exclude_user_id=current_user.id
-        )
-
-        # 전체 검색 결과 수
-        total_count = await auth_service.get_user_count_by_query(
-            db=db,
-            query=query,
-            exclude_user_id=current_user.id
-        )
-
-        # UserProfile 스키마 변환
-        user_profiles = [UserProfile.model_validate(user) for user in users]
-
-        return UserSearchResponse(
-            users=user_profiles,
-            total_count=total_count
-        )
-
-    except Exception as e:
-        logger.error(f"Error searching users: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to search users"
-        )
+# @router.get("/search", response_model=UserSearchResponse)
+# async def search_users(
+#     query: str = Query(..., min_length=1, max_length=50, description="검색 쿼리"),
+#     limit: int = Query(default=10, ge=1, le=50, description="결과 개수"),
+#     current_user: User = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_async_session)
+# ) -> UserSearchResponse:
+#     """
+#     사용자를 검색합니다.
+#
+#     Args:
+#         query: 검색 쿼리 (사용자명 또는 이메일)
+#         limit: 결과 개수
+#         current_user: 현재 사용자
+#         db: 데이터베이스 세션
+#
+#     Returns:
+#         UserSearchResponse: 검색 결과
+#     """
+#     try:
+#         # 사용자 검색 (자신 제외)
+#         users = await auth_service.search_users_by_username(
+#             db=db,
+#             query=query,
+#             limit=limit,
+#             exclude_user_id=current_user.id
+#         )
+#
+#         # 전체 검색 결과 수
+#         total_count = await auth_service.get_user_count_by_query(
+#             db=db,
+#             query=query,
+#             exclude_user_id=current_user.id
+#         )
+#
+#         # UserProfile 스키마 변환
+#         user_profiles = [UserProfile.model_validate(user) for user in users]
+#
+#         return UserSearchResponse(
+#             users=user_profiles,
+#             total_count=total_count
+#         )
+#
+#     except Exception as e:
+#         logger.error(f"Error searching users: {e}")
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail="Failed to search users"
+#         )
 
 
 @router.get("/{user_id}", response_model=UserProfile)
@@ -102,7 +102,6 @@ async def get_users_by_ids(
     db: AsyncSession = Depends(get_async_session)
 ) -> List[UserProfile]:
     """
-<<<<<<< HEAD
     사용자 ID 목록으로 여러 사용자를 조회합니다.
 
     Args:

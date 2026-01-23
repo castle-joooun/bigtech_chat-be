@@ -123,31 +123,67 @@ class FriendshipService:
     ) -> bool:
         """
         친구 요청을 거절합니다 (soft delete).
-        
+
         Args:
             db: 데이터베이스 세션
             friendship_id: 친구 요청 ID
             user_id: 거절하는 사용자 ID
-            
+
         Returns:
             bool: 거절 성공 여부
         """
         friendship = await FriendshipService.get_friendship_by_id(db, friendship_id)
         if not friendship:
             raise ValueError("Friendship not found")
-        
+
         # 요청 받은 사용자만 거절 가능
         if friendship.user_id_2 != user_id:
             raise ValueError("Only the target user can reject the request")
-        
+
         if friendship.status != "pending":
             raise ValueError("Friendship request is not pending")
-        
+
         friendship.deleted_at = datetime.utcnow()
         friendship.updated_at = datetime.utcnow()
-        
+
         await db.commit()
-        
+
+        return True
+
+    @staticmethod
+    async def cancel_friend_request(
+        db: AsyncSession,
+        friendship_id: int,
+        user_id: int
+    ) -> bool:
+        """
+        자신이 보낸 친구 요청을 취소합니다 (soft delete).
+
+        Args:
+            db: 데이터베이스 세션
+            friendship_id: 친구 요청 ID
+            user_id: 취소하는 사용자 ID (요청을 보낸 사용자)
+
+        Returns:
+            bool: 취소 성공 여부
+        """
+        friendship = await FriendshipService.get_friendship_by_id(db, friendship_id)
+        if not friendship:
+            raise ValueError("Friendship not found")
+
+        # 요청을 보낸 사용자만 취소 가능
+        if friendship.user_id_1 != user_id:
+            raise ValueError("Only the requester can cancel the request")
+
+        if friendship.status != "pending":
+            raise ValueError("Only pending requests can be cancelled")
+
+        # Soft delete
+        friendship.deleted_at = datetime.utcnow()
+        friendship.updated_at = datetime.utcnow()
+
+        await db.commit()
+
         return True
 
     @staticmethod

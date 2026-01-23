@@ -243,6 +243,47 @@ async def get_friend_requests(
         )
 
 
+@router.delete("/{friendship_id}/cancel")
+async def cancel_friend_request(
+    friendship_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    자신이 보낸 친구 요청을 취소합니다.
+
+    Args:
+        friendship_id: 친구 요청 ID
+        current_user: 현재 인증된 사용자
+        db: 데이터베이스 세션
+
+    Returns:
+        dict: 성공 메시지
+    """
+    try:
+        # 친구 요청 취소
+        await FriendshipService.cancel_friend_request(
+            db, friendship_id, current_user.id
+        )
+
+        return {
+            "message": "Friend request cancelled successfully",
+            "friendship_id": friendship_id
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error cancelling friend request: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to cancel friend request"
+        )
+
+
 @router.get("/search", response_model=List[UserProfile])
 async def search_users_for_friend(
     query: str = Query(..., min_length=3, max_length=50, description="검색어 (최소 3글자)"),
