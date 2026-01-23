@@ -151,6 +151,87 @@ class FriendshipService:
         return True
 
     @staticmethod
+    async def accept_friend_request_by_requester(
+        db: AsyncSession,
+        requester_user_id: int,
+        current_user_id: int
+    ) -> Friendship:
+        """
+        요청자 ID로 친구 요청을 수락합니다.
+
+        Args:
+            db: 데이터베이스 세션
+            requester_user_id: 친구 요청을 보낸 사용자 ID
+            current_user_id: 수락하는 사용자 ID (현재 사용자)
+
+        Returns:
+            Friendship: 업데이트된 친구 관계
+        """
+        # 요청자가 보낸 pending 상태의 친구 요청 찾기
+        query = select(Friendship).where(
+            and_(
+                Friendship.user_id_1 == requester_user_id,
+                Friendship.user_id_2 == current_user_id,
+                Friendship.status == "pending",
+                Friendship.deleted_at.is_(None)
+            )
+        )
+
+        result = await db.execute(query)
+        friendship = result.scalar_one_or_none()
+
+        if not friendship:
+            raise ValueError("Friend request not found or already processed")
+
+        friendship.status = "accepted"
+        friendship.updated_at = datetime.utcnow()
+
+        await db.commit()
+        await db.refresh(friendship)
+
+        return friendship
+
+    @staticmethod
+    async def reject_friend_request_by_requester(
+        db: AsyncSession,
+        requester_user_id: int,
+        current_user_id: int
+    ) -> bool:
+        """
+        요청자 ID로 친구 요청을 거절합니다 (soft delete).
+
+        Args:
+            db: 데이터베이스 세션
+            requester_user_id: 친구 요청을 보낸 사용자 ID
+            current_user_id: 거절하는 사용자 ID (현재 사용자)
+
+        Returns:
+            bool: 거절 성공 여부
+        """
+        # 요청자가 보낸 pending 상태의 친구 요청 찾기
+        query = select(Friendship).where(
+            and_(
+                Friendship.user_id_1 == requester_user_id,
+                Friendship.user_id_2 == current_user_id,
+                Friendship.status == "pending",
+                Friendship.deleted_at.is_(None)
+            )
+        )
+
+        result = await db.execute(query)
+        friendship = result.scalar_one_or_none()
+
+        if not friendship:
+            raise ValueError("Friend request not found or already processed")
+
+        friendship.deleted_at = datetime.utcnow()
+        friendship.updated_at = datetime.utcnow()
+
+        await db.commit()
+
+        return True
+
+    @staticmethod
     async def cancel_friend_request(
         db: AsyncSession,
         friendship_id: int,

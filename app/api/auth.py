@@ -153,6 +153,9 @@ async def login_oauth2(
     await set_online(user.id,
                      session_id=f"login_{user.id}_{access_token[:10]}")
 
+    # MySQL DB에도 온라인 상태 업데이트
+    await auth_service.update_online_status(db, user.id, is_online=True)
+
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -196,6 +199,9 @@ async def login_json(
     await set_online(user.id,
                      session_id=f"login_{user.id}_{access_token[:10]}")
 
+    # MySQL DB에도 온라인 상태 업데이트
+    await auth_service.update_online_status(db, user.id, is_online=True)
+
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -205,13 +211,17 @@ async def login_json(
 
 @router.post("/logout")
 async def logout(
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_async_session)
 ) -> dict:
     """
     사용자 로그아웃
     """
     # Redis에서 온라인 상태 제거
     await set_offline(current_user.id)
+
+    # MySQL DB에도 오프라인 상태 및 마지막 접속 시간 업데이트
+    await auth_service.update_online_status(db, current_user.id, is_online=False)
 
     return {
         "message": "Successfully logged out",
