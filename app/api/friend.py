@@ -243,32 +243,36 @@ async def get_friend_requests(
         )
 
 
-@router.delete("/{friendship_id}/cancel")
+@router.delete("/request/{target_user_id}")
 async def cancel_friend_request(
-    friendship_id: int,
+    target_user_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
 ):
     """
-    자신이 보낸 친구 요청을 취소합니다.
+    자신이 특정 사용자에게 보낸 친구 요청을 취소합니다.
 
     Args:
-        friendship_id: 친구 요청 ID
+        target_user_id: 친구 요청을 받은 대상 사용자 ID
         current_user: 현재 인증된 사용자
         db: 데이터베이스 세션
 
     Returns:
         dict: 성공 메시지
+
+    Example:
+        DELETE /api/friends/request/123
+        # 현재 유저가 user_id=123에게 보낸 친구 요청을 취소
     """
     try:
         # 친구 요청 취소
-        await FriendshipService.cancel_friend_request(
-            db, friendship_id, current_user.id
+        await FriendshipService.cancel_friend_request_by_target(
+            db, current_user.id, target_user_id
         )
 
         return {
             "message": "Friend request cancelled successfully",
-            "friendship_id": friendship_id
+            "target_user_id": target_user_id
         }
 
     except ValueError as e:

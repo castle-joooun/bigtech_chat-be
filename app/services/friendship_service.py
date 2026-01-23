@@ -187,6 +187,47 @@ class FriendshipService:
         return True
 
     @staticmethod
+    async def cancel_friend_request_by_target(
+        db: AsyncSession,
+        requester_id: int,
+        target_user_id: int
+    ) -> bool:
+        """
+        대상 유저 ID로 자신이 보낸 친구 요청을 취소합니다 (soft delete).
+
+        Args:
+            db: 데이터베이스 세션
+            requester_id: 요청을 보낸 사용자 ID (현재 사용자)
+            target_user_id: 요청을 받은 대상 사용자 ID
+
+        Returns:
+            bool: 취소 성공 여부
+        """
+        # 현재 사용자가 보낸 pending 상태의 친구 요청 찾기
+        query = select(Friendship).where(
+            and_(
+                Friendship.user_id_1 == requester_id,
+                Friendship.user_id_2 == target_user_id,
+                Friendship.status == "pending",
+                Friendship.deleted_at.is_(None)
+            )
+        )
+
+        result = await db.execute(query)
+        friendship = result.scalar_one_or_none()
+
+        if not friendship:
+            raise ValueError("Friend request not found or already processed")
+
+        # Soft delete
+        friendship.deleted_at = datetime.utcnow()
+        friendship.updated_at = datetime.utcnow()
+
+        await db.commit()
+
+        return True
+
+    @staticmethod
     async def get_friendship_by_id(
         db: AsyncSession,
         friendship_id: int
@@ -203,7 +244,7 @@ class FriendshipService:
         """
         query = select(Friendship).where(
             and_(
-                Friendship.id == friendship_id,
+                Friendship.user_id_1 == friendship_id,
                 Friendship.deleted_at.is_(None)
             )
         )
