@@ -94,27 +94,34 @@ async def send_message(
     except Exception as cache_error:
         logger.warning(f"Failed to cache new message: {cache_error}")
 
-    # Redis Pub/Sub으로 실시간 브로드캐스트 (SSE 스트리밍용)
+    # Kafka로 실시간 브로드캐스트 (Event-Driven Architecture)
     try:
-        redis = await get_redis()
-        broadcast_data = {
-            "id": str(message.id),
-            "user_id": current_user.id,
-            "username": current_user.username,
-            "room_id": room_id,
-            "content": message_data.content,
-            "message_type": message_data.message_type,
-            "created_at": message.created_at.isoformat(),
-            "is_deleted": False,
-            "reply_to": message_data.reply_to
-        }
-        await redis.publish(
-            f"room:messages:{room_id}",
-            json.dumps(broadcast_data)
+        from app.infrastructure.kafka.producer import get_event_producer
+        from app.domain.events.message_events import MessageSent
+        from datetime import datetime, timezone
+
+        producer = get_event_producer()
+
+        # MessageSent Domain Event 생성
+        event = MessageSent(
+            message_id=str(message.id),
+            room_id=room_id,
+            user_id=current_user.id,
+            username=current_user.username,
+            content=message_data.content,
+            message_type=message_data.message_type,
+            timestamp=datetime.now(timezone.utc)
         )
-        logger.info(f"Broadcasted message {message.id} to room {room_id}")
+
+        # Kafka로 이벤트 발행 (room_id를 key로 사용하여 순서 보장)
+        await producer.publish(
+            topic='message.events',
+            event=event,
+            key=str(room_id)
+        )
+        logger.info(f"Published MessageSent event to Kafka: message_id={message.id}, room_id={room_id}")
     except Exception as pub_error:
-        logger.error(f"Failed to publish message to Redis: {pub_error}")
+        logger.error(f"Failed to publish message to Kafka: {pub_error}")
 
     return MessageResponse(**message_dict)
 
@@ -451,7 +458,7 @@ async def stream_room_messages(
     db: AsyncSession = Depends(get_async_session)
 ):
     """
-    채팅방 메시지 실시간 스트리밍 (SSE + Redis Pub/Sub)
+    채팅방 메시지 실시간 스트리밍 (SSE + Kafka Consumer)
 
     클라이언트는 이 엔드포인트로 연결하여 새 메시지를 실시간으로 받습니다.
 
@@ -473,19 +480,24 @@ async def stream_room_messages(
         raise AuthorizationException("Access denied to this chat room")
 
     async def event_generator():
-        pubsub = None
-        pubsub_client = None
+        consumer = None
 
         try:
-            # Redis Pub/Sub 전용 연결 생성
-            import redis.asyncio as redis_lib
-            from app.core.config import settings
-            pubsub_client = redis_lib.from_url(settings.redis_url, decode_responses=True)
-            pubsub = pubsub_client.pubsub()
+            # Kafka Consumer 생성
+            from aiokafka import AIOKafkaConsumer
+            from app.infrastructure.kafka.config import kafka_config
+            import asyncio
 
-            # 채팅방 메시지 채널 구독
-            channel = f"room:messages:{room_id}"
-            await pubsub.subscribe(channel)
+            consumer = AIOKafkaConsumer(
+                kafka_config.topic_message_events,
+                bootstrap_servers=kafka_config.bootstrap_servers,
+                group_id=f"message-stream-user-{current_user.id}",  # 각 사용자별 독립적인 Consumer Group
+                auto_offset_reset='latest',  # 연결 시점 이후의 메시지만 수신
+                enable_auto_commit=True,
+                value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+            )
+
+            await consumer.start()
 
             # 연결 성공 알림
             yield {
@@ -496,52 +508,57 @@ async def stream_room_messages(
                     "user_id": current_user.id
                 })
             }
-            logger.info(f"User {current_user.id} connected to message stream for room {room_id}")
+            logger.info(f"User {current_user.id} connected to Kafka message stream for room {room_id}")
 
-            # Redis Pub/Sub 메시지 수신 및 전송
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    try:
-                        # Redis에서 받은 새 메시지
-                        message_data = json.loads(message["data"])
+            # Kafka에서 메시지 수신 및 필터링
+            async for msg in consumer:
+                try:
+                    event_data = msg.value
+
+                    # 해당 채팅방의 메시지만 필터링
+                    if event_data.get('room_id') == room_id:
+                        # MessageSent 이벤트를 클라이언트 형식으로 변환
+                        message_data = {
+                            "id": event_data.get('message_id'),
+                            "user_id": event_data.get('user_id'),
+                            "username": event_data.get('username'),
+                            "room_id": event_data.get('room_id'),
+                            "content": event_data.get('content'),
+                            "message_type": event_data.get('message_type'),
+                            "created_at": event_data.get('timestamp'),
+                            "is_deleted": False
+                        }
 
                         # SSE 이벤트로 전송
                         yield {
                             "event": "new_message",
                             "data": json.dumps(message_data)
                         }
-                        logger.debug(f"Sent new message {message_data.get('id')} to user {current_user.id}")
+                        logger.debug(f"Sent Kafka message {message_data.get('id')} to user {current_user.id}")
 
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Failed to parse Redis message: {e}")
-                        continue
-                    except KeyError as e:
-                        logger.error(f"Missing key in message data: {e}")
-                        continue
+                except Exception as e:
+                    logger.error(f"Failed to process Kafka message: {e}")
+                    continue
+
+        except asyncio.CancelledError:
+            logger.info(f"SSE stream cancelled for user {current_user.id}, room {room_id}")
+            raise
 
         except Exception as e:
-            logger.error(f"Error in SSE stream for user {current_user.id}, room {room_id}: {e}")
+            logger.error(f"Error in Kafka SSE stream for user {current_user.id}, room {room_id}: {e}")
             yield {
                 "event": "error",
                 "data": json.dumps({"message": "Stream error occurred"})
             }
 
         finally:
-            # 정리 작업
-            if pubsub:
+            # Kafka Consumer 정리
+            if consumer:
                 try:
-                    await pubsub.unsubscribe()
-                    await pubsub.aclose()
+                    await consumer.stop()
+                    logger.info(f"Kafka consumer stopped for user {current_user.id}, room {room_id}")
                 except Exception as e:
-                    logger.error(f"Error closing pubsub: {e}")
-
-            if pubsub_client:
-                try:
-                    await pubsub_client.aclose()
-                except Exception as e:
-                    logger.error(f"Error closing pubsub_client: {e}")
-
-            logger.info(f"SSE stream closed for user {current_user.id}, room {room_id}")
+                    logger.error(f"Error stopping Kafka consumer: {e}")
 
     return EventSourceResponse(event_generator(), ping=30)
 

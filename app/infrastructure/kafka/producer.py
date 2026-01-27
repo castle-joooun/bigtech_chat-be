@@ -36,8 +36,7 @@ class DomainEventProducer:
                 key_serializer=lambda k: str(k).encode('utf-8') if k else None,
                 acks=kafka_config.producer_acks,
                 compression_type=kafka_config.producer_compression_type,
-                max_in_flight_requests_per_connection=kafka_config.producer_max_in_flight,
-                retries=kafka_config.producer_retries,
+                max_batch_size=16384,  # 16KB (aiokafka 기본값)
                 request_timeout_ms=kafka_config.producer_request_timeout_ms
             )
             await self.producer.start()

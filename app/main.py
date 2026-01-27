@@ -34,6 +34,12 @@ async def lifespan(app: FastAPI):
     await init_databases()
     logger.info("Databases initialized successfully")
 
+    # Kafka Producer 시작
+    from app.infrastructure.kafka.producer import get_event_producer
+    producer = get_event_producer()
+    await producer.start()
+    logger.info("Kafka Producer started successfully")
+
     # Heartbeat 모니터 시작
     heartbeat_monitor = get_heartbeat_monitor()
     await heartbeat_monitor.start()
@@ -47,6 +53,10 @@ async def lifespan(app: FastAPI):
     # Heartbeat 모니터 중지
     await heartbeat_monitor.stop()
     logger.info("Heartbeat monitor stopped")
+
+    # Kafka Producer 종료
+    await producer.stop()
+    logger.info("Kafka Producer stopped")
 
     await close_databases()
     logger.info("Application shutdown completed")

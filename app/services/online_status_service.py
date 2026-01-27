@@ -79,18 +79,27 @@ class OnlineStatusService:
 
             await pipe.execute()
 
-            # 5. Redis Pub/Sub으로 상태 변화 브로드캐스트
-            status_change_message = {
-                "user_id": user_id,
-                "is_online": True,
-                "last_activity": current_time,
-                "session_id": session_id,
-                "timestamp": current_time
-            }
-            await redis.publish(
-                f"user:status:{user_id}",
-                json.dumps(status_change_message)
-            )
+            # 5. Kafka로 상태 변화 이벤트 발행
+            try:
+                from app.infrastructure.kafka.producer import get_event_producer
+                from app.domain.events.user_events import UserOnlineStatusChanged
+                from datetime import timezone
+
+                producer = get_event_producer()
+                event = UserOnlineStatusChanged(
+                    user_id=user_id,
+                    is_online=True,
+                    timestamp=datetime.now(timezone.utc),
+                    session_id=session_id
+                )
+                await producer.publish(
+                    topic='user.online_status',
+                    event=event,
+                    key=str(user_id)
+                )
+                logger.debug(f"Published UserOnlineStatusChanged event for user {user_id}")
+            except Exception as pub_error:
+                logger.error(f"Failed to publish online status to Kafka: {pub_error}")
 
             logger.info(f"User {user_id} set to online status", extra={
                 "user_id": user_id,
@@ -140,17 +149,27 @@ class OnlineStatusService:
 
             await pipe.execute()
 
-            # 5. Redis Pub/Sub으로 상태 변화 브로드캐스트
-            status_change_message = {
-                "user_id": user_id,
-                "is_online": False,
-                "last_seen": current_time,
-                "timestamp": current_time
-            }
-            await redis.publish(
-                f"user:status:{user_id}",
-                json.dumps(status_change_message)
-            )
+            # 5. Kafka로 상태 변화 이벤트 발행
+            try:
+                from app.infrastructure.kafka.producer import get_event_producer
+                from app.domain.events.user_events import UserOnlineStatusChanged
+                from datetime import timezone
+
+                producer = get_event_producer()
+                event = UserOnlineStatusChanged(
+                    user_id=user_id,
+                    is_online=False,
+                    timestamp=datetime.now(timezone.utc),
+                    last_seen=current_time
+                )
+                await producer.publish(
+                    topic='user.online_status',
+                    event=event,
+                    key=str(user_id)
+                )
+                logger.debug(f"Published UserOnlineStatusChanged event for user {user_id}")
+            except Exception as pub_error:
+                logger.error(f"Failed to publish offline status to Kafka: {pub_error}")
 
             logger.info(f"User {user_id} set to offline status", extra={
                 "user_id": user_id,
@@ -304,15 +323,26 @@ class OnlineStatusService:
 
                 await pipe.execute()
 
-                # 3. Redis Pub/Sub으로 온라인 상태 브로드캐스트
-                await redis.publish(
-                    f"user:status:{user_id}",
-                    json.dumps({
-                        "user_id": user_id,
-                        "is_online": True,
-                        "timestamp": current_time
-                    })
-                )
+                # 3. Kafka로 온라인 상태 이벤트 발행
+                try:
+                    from app.infrastructure.kafka.producer import get_event_producer
+                    from app.domain.events.user_events import UserOnlineStatusChanged
+                    from datetime import timezone
+
+                    producer = get_event_producer()
+                    event = UserOnlineStatusChanged(
+                        user_id=user_id,
+                        is_online=True,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    await producer.publish(
+                        topic='user.online_status',
+                        event=event,
+                        key=str(user_id)
+                    )
+                    logger.debug(f"Published UserOnlineStatusChanged event (from activity) for user {user_id}")
+                except Exception as pub_error:
+                    logger.error(f"Failed to publish online status to Kafka: {pub_error}")
 
                 return True
 
@@ -340,16 +370,26 @@ class OnlineStatusService:
                     pass
 
             if should_broadcast:
-                # Redis Pub/Sub으로 활동 상태 브로드캐스트
-                await redis.publish(
-                    f"user:status:{user_id}",
-                    json.dumps({
-                        "user_id": user_id,
-                        "is_online": True,
-                        "timestamp": current_time
-                    })
-                )
-                logger.debug(f"Broadcasted activity update for user {user_id}")
+                # Kafka로 활동 상태 이벤트 발행
+                try:
+                    from app.infrastructure.kafka.producer import get_event_producer
+                    from app.domain.events.user_events import UserOnlineStatusChanged
+                    from datetime import timezone
+
+                    producer = get_event_producer()
+                    event = UserOnlineStatusChanged(
+                        user_id=user_id,
+                        is_online=True,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    await producer.publish(
+                        topic='user.online_status',
+                        event=event,
+                        key=str(user_id)
+                    )
+                    logger.debug(f"Published activity update for user {user_id}")
+                except Exception as pub_error:
+                    logger.error(f"Failed to publish activity update to Kafka: {pub_error}")
 
             return True
 
