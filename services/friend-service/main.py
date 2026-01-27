@@ -44,7 +44,9 @@ app.add_middleware(
 )
 
 # Include routers
-# TODO: Add friend router
+from app.api import friend
+
+app.include_router(friend.router)
 
 
 @app.get("/")
