@@ -7,6 +7,7 @@ Chat Service - FastAPI Application
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.database.mongodb import init_mongodb, close_mongodb
 from app.database.redis import init_redis, close_redis
@@ -60,6 +61,9 @@ from app.api import chat_room, message
 
 app.include_router(chat_room.router)
 app.include_router(message.router)
+
+# Prometheus metrics
+Instrumentator().instrument(app).expose(app)
 
 
 @app.get("/")

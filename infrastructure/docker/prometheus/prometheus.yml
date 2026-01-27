@@ -27,7 +27,7 @@ scrape_configs:
   - job_name: 'user-service'
     metrics_path: /metrics
     static_configs:
-      - targets: ['user-service:8005']
+      - targets: ['bigtech-user-service:8005']
     relabel_configs:
       - source_labels: [__address__]
         target_label: service
@@ -37,7 +37,7 @@ scrape_configs:
   - job_name: 'friend-service'
     metrics_path: /metrics
     static_configs:
-      - targets: ['friend-service:8003']
+      - targets: ['bigtech-friend-service:8003']
     relabel_configs:
       - source_labels: [__address__]
         target_label: service
@@ -47,29 +47,14 @@ scrape_configs:
   - job_name: 'chat-service'
     metrics_path: /metrics
     static_configs:
-      - targets: ['chat-service:8002']
+      - targets: ['bigtech-chat-service:8002']
     relabel_configs:
       - source_labels: [__address__]
         target_label: service
         replacement: 'chat-service'
 
-  # Kong API Gateway
-  - job_name: 'kong'
-    static_configs:
-      - targets: ['kong:8001']
-    metrics_path: /metrics
-
-  # MySQL Exporter (옵션)
-  - job_name: 'mysql'
-    static_configs:
-      - targets: ['mysql-exporter:9104']
-
-  # Redis Exporter (옵션)
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis-exporter:9121']
-
-  # Kafka Exporter (옵션)
-  - job_name: 'kafka'
-    static_configs:
-      - targets: ['kafka-exporter:9308']
+  # Kong API Gateway (Prometheus plugin 필요)
+  # - job_name: 'kong'
+  #   static_configs:
+  #     - targets: ['kong:8001']
+  #   metrics_path: /metrics

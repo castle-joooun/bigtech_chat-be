@@ -29,3 +29,6 @@ passlib[bcrypt]>=1.7.4
 
 # HTTP Client
 httpx>=0.25.0
+
+# Metrics
+prometheus-fastapi-instrumentator>=6.1.0

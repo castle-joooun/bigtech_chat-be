@@ -7,6 +7,7 @@ User Service - FastAPI Application
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.api import auth, profile, user
 from app.services.online_status_service import close_redis
@@ -53,6 +54,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(user.router)
+
+# Prometheus metrics
+Instrumentator().instrument(app).expose(app)
 
 
 @app.get("/")
