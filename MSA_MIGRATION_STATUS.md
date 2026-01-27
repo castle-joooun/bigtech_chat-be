@@ -11,7 +11,7 @@
 |------|------|------|--------|
 | Week 1-2 | DDD Lite 적용 | ✅ 완료 | 100% |
 | Week 3-4 | Kafka 통합 | ✅ 완료 | 100% |
-| Week 5 | MSA 서비스 분리 | 🚧 진행중 | 30% |
+| Week 5 | MSA 서비스 분리 | 🚧 진행중 | 60% |
 | Week 6 | API Gateway 구성 | ⏳ 대기 | 0% |
 | Week 7-8 | 모니터링 & CI/CD | ⏳ 대기 | 0% |
 
@@ -38,39 +38,49 @@
 
 ### Week 5: MSA 서비스 분리 (현재)
 - ✅ 4개 마이크로서비스 디렉토리 구조 생성
-  - ✅ User Service (Port 8005)
+  - ✅ User Service (Port 8005) - **완전 동작**
+  - ✅ Friend Service (Port 8003) - **기본 구조 완료**
   - ✅ Chat Service (Port 8002)
-  - ✅ Friend Service (Port 8003)
   - ✅ Notification Service (Port 8004)
-- ✅ 각 서비스별 기본 파일 생성
-  - ✅ main.py
-  - ✅ requirements.txt
-  - ✅ Dockerfile
-  - ✅ config.py
-- ✅ User Service 실행 및 Health Check 테스트
+- ✅ User Service API 구현 완료
+  - ✅ 인증 API (회원가입, 로그인, 로그아웃)
+  - ✅ 프로필 API (조회, 수정, 이미지 관리)
+  - ✅ 사용자 검색 API
+  - ✅ 모든 엔드포인트 테스트 완료
+- ✅ Friend Service 기본 구조
+  - ✅ 공통 모듈 복사 완료
+  - ✅ 모델 정의 (Friendship, BlockUser)
+  - ✅ 서비스 실행 확인
 - ✅ MSA 전체 문서 작성 (services/README.md)
 
 ---
 
 ## 🚧 진행 중 작업
 
-### API 마이그레이션 (30% 완료)
+### API 마이그레이션 (60% 완료)
 
-#### User Service
-- ⏳ 인증 API 이동 (register, login, logout)
-- ⏳ 프로필 API 이동 (profile, upload-image)
-- ⏳ 사용자 검색 API 이동
-- ⏳ 온라인 상태 API 이동
+#### User Service - ✅ 완료
+- ✅ 인증 API 이동 (register, login, logout)
+  - OAuth2 및 JSON 로그인 지원
+  - JWT 토큰 발급 및 검증
+- ✅ 프로필 API 이동 (profile, upload-image, delete-image)
+  - 프로필 조회 및 수정
+  - 이미지 업로드/삭제
+- ✅ 사용자 검색 API 이동
+  - 사용자명/표시명 검색
+  - 복수 사용자 조회
 
-#### Chat Service
-- ⏳ 채팅방 API 이동
-- ⏳ 메시지 API 이동 (send, read, stream)
-
-#### Friend Service
+#### Friend Service - 🚧 진행중 (기본 구조 완료)
+- ✅ 디렉토리 구조 및 공통 모듈
+- ✅ Models (Friendship, BlockUser)
 - ⏳ 친구 관계 API 이동 (request, accept, reject, delete)
 - ⏳ 차단 API 이동
 
-#### Notification Service
+#### Chat Service - ⏳ 대기
+- ⏳ 채팅방 API 이동
+- ⏳ 메시지 API 이동 (send, read, stream)
+
+#### Notification Service - ⏳ 대기
 - ⏳ 알림 API 이동
 - ⏳ SSE 스트리밍 구현
 
