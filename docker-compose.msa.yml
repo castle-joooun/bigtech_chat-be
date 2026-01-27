@@ -195,6 +195,8 @@ services:
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_HOURS=2
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_USER_EVENTS=user.events
+      - KAFKA_TOPIC_USER_ONLINE_STATUS=user.online_status
     depends_on:
       mysql:
         condition: service_healthy
@@ -221,6 +223,7 @@ services:
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_HOURS=2
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_FRIEND_EVENTS=friend.events
     depends_on:
       mysql:
         condition: service_healthy

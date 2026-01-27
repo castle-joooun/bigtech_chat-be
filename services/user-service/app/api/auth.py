@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +25,8 @@ from app.core.errors import (
 from app.core.validators import validate_user_registration, validate_user_login
 from app.services import auth_service
 from app.services.online_status_service import set_online, set_offline, update_activity
+from app.kafka.producer import get_event_producer
+from app.kafka.events import UserRegistered, UserOnlineStatusChanged
 
 # OAuth2 설정
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -109,6 +111,20 @@ async def register(
         display_name=user_data.display_name
     )
 
+    # Kafka 이벤트 발행
+    producer = get_event_producer()
+    await producer.publish(
+        topic=settings.kafka_topic_user_events,
+        event=UserRegistered(
+            user_id=user.id,
+            email=user.email,
+            username=user.username,
+            display_name=user.display_name or user.username,
+            timestamp=datetime.utcnow()
+        ),
+        key=str(user.id)
+    )
+
     return user
 
 
@@ -154,6 +170,18 @@ async def login_oauth2(
 
     # MySQL DB에도 온라인 상태 업데이트
     await auth_service.update_online_status(db, user.id, is_online=True)
+
+    # Kafka 이벤트 발행 (온라인 상태)
+    producer = get_event_producer()
+    await producer.publish(
+        topic=settings.kafka_topic_user_online_status,
+        event=UserOnlineStatusChanged(
+            user_id=user.id,
+            is_online=True,
+            timestamp=datetime.utcnow()
+        ),
+        key=str(user.id)
+    )
 
     return Token(
         access_token=access_token,
@@ -201,6 +229,18 @@ async def login_json(
     # MySQL DB에도 온라인 상태 업데이트
     await auth_service.update_online_status(db, user.id, is_online=True)
 
+    # Kafka 이벤트 발행 (온라인 상태)
+    producer = get_event_producer()
+    await producer.publish(
+        topic=settings.kafka_topic_user_online_status,
+        event=UserOnlineStatusChanged(
+            user_id=user.id,
+            is_online=True,
+            timestamp=datetime.utcnow()
+        ),
+        key=str(user.id)
+    )
+
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -221,6 +261,18 @@ async def logout(
 
     # MySQL DB에도 오프라인 상태 및 마지막 접속 시간 업데이트
     await auth_service.update_online_status(db, current_user.id, is_online=False)
+
+    # Kafka 이벤트 발행 (오프라인 상태)
+    producer = get_event_producer()
+    await producer.publish(
+        topic=settings.kafka_topic_user_online_status,
+        event=UserOnlineStatusChanged(
+            user_id=current_user.id,
+            is_online=False,
+            timestamp=datetime.utcnow()
+        ),
+        key=str(current_user.id)
+    )
 
     return {
         "message": "Successfully logged out",

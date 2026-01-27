@@ -11,6 +11,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.api import auth, profile, user
 from app.services.online_status_service import close_redis
+from app.kafka.producer import get_event_producer
 
 
 @asynccontextmanager
@@ -22,7 +23,9 @@ async def lifespan(app: FastAPI):
     # Database connections are initialized lazily on first request
     # Redis connection is initialized lazily on first use
 
-    # TODO: Initialize Kafka Producer
+    # Initialize Kafka Producer
+    producer = get_event_producer()
+    await producer.start()
 
     yield
 
@@ -32,7 +35,8 @@ async def lifespan(app: FastAPI):
     # Close Redis connection
     await close_redis()
 
-    # TODO: Stop Kafka Producer
+    # Stop Kafka Producer
+    await producer.stop()
 
 
 app = FastAPI(

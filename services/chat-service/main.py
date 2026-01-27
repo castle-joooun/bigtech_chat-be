@@ -11,6 +11,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.database.mongodb import init_mongodb, close_mongodb
 from app.database.redis import init_redis, close_redis
+from app.kafka.producer import get_event_producer
 
 
 @asynccontextmanager
@@ -25,7 +26,9 @@ async def lifespan(app: FastAPI):
     # Redis 초기화
     await init_redis()
 
-    # TODO: Initialize Kafka Producer
+    # Initialize Kafka Producer
+    producer = get_event_producer()
+    await producer.start()
 
     yield
 
@@ -38,7 +41,8 @@ async def lifespan(app: FastAPI):
     # Close Redis connection
     await close_redis()
 
-    # TODO: Stop Kafka Producer
+    # Stop Kafka Producer
+    await producer.stop()
 
 
 app = FastAPI(

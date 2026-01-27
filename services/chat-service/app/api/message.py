@@ -4,6 +4,7 @@ Message API - 메시지 관련 API 엔드포인트
 
 import json
 import logging
+from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +19,10 @@ from app.schemas.message import (
 from app.api.dependencies import get_current_user
 from app.core.errors import ResourceNotFoundException, BusinessLogicException, AuthorizationException
 from app.core.validators import Validator
+from app.core.config import settings
 from app.services import message_service, chat_room_service
+from app.kafka.producer import get_event_producer
+from app.kafka.events import MessageSent, MessagesRead
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +82,24 @@ async def send_message(
     message_dict = message.model_dump()
     message_dict["id"] = str(message.id)
 
-    # TODO: Kafka로 실시간 브로드캐스트 (Event-Driven Architecture)
-    # try:
-    #     from app.infrastructure.kafka.producer import get_event_producer
-    #     producer = get_event_producer()
-    #     await producer.publish(...)
-    # except Exception as pub_error:
-    #     logger.error(f"Failed to publish message to Kafka: {pub_error}")
+    # Kafka로 실시간 브로드캐스트
+    try:
+        producer = get_event_producer()
+        await producer.publish(
+            topic=settings.kafka_topic_message_events,
+            event=MessageSent(
+                message_id=str(message.id),
+                room_id=room_id,
+                user_id=current_user.id,
+                username=current_user.username,
+                content=message_data.content,
+                message_type=message_data.message_type,
+                timestamp=datetime.utcnow()
+            ),
+            key=str(room_id)
+        )
+    except Exception as pub_error:
+        logger.error(f"Failed to publish message to Kafka: {pub_error}")
 
     return MessageResponse(**message_dict)
 
@@ -177,6 +192,22 @@ async def mark_messages_as_read(
     read_count = await message_service.mark_multiple_messages_as_read(
         read_request.message_ids, current_user.id, room_id
     )
+
+    # Kafka 이벤트 발행
+    try:
+        producer = get_event_producer()
+        await producer.publish(
+            topic=settings.kafka_topic_message_events,
+            event=MessagesRead(
+                room_id=room_id,
+                user_id=current_user.id,
+                message_ids=read_request.message_ids,
+                timestamp=datetime.utcnow()
+            ),
+            key=str(room_id)
+        )
+    except Exception as pub_error:
+        logger.error(f"Failed to publish read event to Kafka: {pub_error}")
 
     return MessageReadResponse(
         success=True,

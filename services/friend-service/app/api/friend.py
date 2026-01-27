@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,14 @@ from app.schemas.user import UserProfile
 from app.api.dependencies import get_current_user
 from app.services.friendship_service import FriendshipService
 from app.services.auth_service import find_user_by_id
+from app.core.config import settings
+from app.kafka.producer import get_event_producer
+from app.kafka.events import (
+    FriendRequestSent,
+    FriendRequestAccepted,
+    FriendRequestRejected,
+    FriendRequestCancelled
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,6 +70,21 @@ async def send_friend_request(
         # 친구 요청 전송
         friendship = await FriendshipService.send_friend_request(
             db, current_user.id, target_user_id
+        )
+
+        # Kafka 이벤트 발행
+        producer = get_event_producer()
+        await producer.publish(
+            topic=settings.kafka_topic_friend_events,
+            event=FriendRequestSent(
+                friendship_id=friendship.id,
+                requester_id=current_user.id,
+                requester_name=current_user.username,
+                addressee_id=target_user_id,
+                addressee_name=target_user.username,
+                timestamp=datetime.utcnow()
+            ),
+            key=str(friendship.id)
         )
 
         return FriendshipResponse(
@@ -114,6 +138,22 @@ async def update_friend_request_status(
                 db, requester_user_id, current_user.id
             )
 
+            # Kafka 이벤트 발행
+            producer = get_event_producer()
+            requester = await find_user_by_id(db, requester_user_id)
+            await producer.publish(
+                topic=settings.kafka_topic_friend_events,
+                event=FriendRequestAccepted(
+                    friendship_id=friendship.id,
+                    requester_id=requester_user_id,
+                    requester_name=requester.username if requester else "Unknown",
+                    addressee_id=current_user.id,
+                    addressee_name=current_user.username,
+                    timestamp=datetime.utcnow()
+                ),
+                key=str(friendship.id)
+            )
+
             return FriendshipResponse(
                 id=friendship.id,
                 user_id_1=friendship.user_id_1,
@@ -129,7 +169,19 @@ async def update_friend_request_status(
                 db, requester_user_id, current_user.id
             )
 
-            # JSON 응답 반환 (dict가 아닌 JSONResponse 사용하지 않아도 됨)
+            # Kafka 이벤트 발행
+            producer = get_event_producer()
+            await producer.publish(
+                topic=settings.kafka_topic_friend_events,
+                event=FriendRequestRejected(
+                    friendship_id=0,  # Already deleted
+                    requester_id=requester_user_id,
+                    addressee_id=current_user.id,
+                    timestamp=datetime.utcnow()
+                ),
+                key=str(requester_user_id)
+            )
+
             from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=200,
@@ -268,6 +320,19 @@ async def cancel_friend_request(
         # 친구 요청 취소
         await FriendshipService.cancel_friend_request_by_target(
             db, current_user.id, target_user_id
+        )
+
+        # Kafka 이벤트 발행
+        producer = get_event_producer()
+        await producer.publish(
+            topic=settings.kafka_topic_friend_events,
+            event=FriendRequestCancelled(
+                friendship_id=0,  # Already deleted
+                requester_id=current_user.id,
+                addressee_id=target_user_id,
+                timestamp=datetime.utcnow()
+            ),
+            key=str(current_user.id)
         )
 
         return {

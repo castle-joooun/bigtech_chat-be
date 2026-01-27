@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
+from app.kafka.producer import get_event_producer
 
 
 @asynccontextmanager
@@ -19,14 +20,17 @@ async def lifespan(app: FastAPI):
 
     # Database connections are initialized lazily on first request
 
-    # TODO: Initialize Kafka Producer
+    # Initialize Kafka Producer
+    producer = get_event_producer()
+    await producer.start()
 
     yield
 
     # Shutdown
     print(f"🛑 {settings.app_name} shutting down...")
 
-    # TODO: Stop Kafka Producer
+    # Stop Kafka Producer
+    await producer.stop()
 
 
 app = FastAPI(
