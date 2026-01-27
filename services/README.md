@@ -310,7 +310,21 @@ curl http://localhost:8002/health
 - **Friend Service**: http://localhost:8003/docs
 - **Chat Service**: http://localhost:8002/docs
 
-### 4. Kafka 클러스터 실행
+### 4. 전체 MSA 스택 실행 (Docker Compose)
+
+```bash
+# 전체 MSA 스택 실행 (Kong + 서비스 + 인프라)
+docker-compose -f docker-compose.msa.yml up -d
+
+# Kong 라우팅 설정
+chmod +x infrastructure/docker/kong/kong-config.sh
+./infrastructure/docker/kong/kong-config.sh
+
+# 서비스 중지
+docker-compose -f docker-compose.msa.yml down
+```
+
+### 5. Kafka 클러스터만 실행 (개발용)
 
 ```bash
 docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
@@ -326,14 +340,15 @@ docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
 - [x] Chat Service API 완성
 - [ ] Notification Service (신규 기능, 추후 구현)
 
-### 2단계: API Gateway 구성
-- [ ] Kong API Gateway 설치
-- [ ] 라우팅 규칙 설정
-- [ ] CORS, Rate Limiting 설정
+### 2단계: API Gateway 구성 (✅ 완료)
+- [x] Kong API Gateway 설정
+- [x] 라우팅 규칙 설정 스크립트
+- [x] CORS, Rate Limiting 플러그인
 
-### 3단계: Docker Compose 통합
-- [ ] 전체 MSA 스택 docker-compose.yml 작성
-- [ ] 서비스 간 네트워크 설정
+### 3단계: Docker Compose 통합 (✅ 완료)
+- [x] 전체 MSA 스택 docker-compose.msa.yml 작성
+- [x] 서비스별 Dockerfile 생성
+- [x] 서비스 간 네트워크 설정
 
 ### 4단계: 모니터링 & CI/CD
 - [ ] Prometheus + Grafana 설정
@@ -347,12 +362,13 @@ docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
 
 | 서비스 | Port | 상태 |
 |--------|------|------|
-| Monolithic API | 8000 | 운영 중 |
+| Monolithic API | 8000 | 운영 중 (레거시) |
+| **Kong API Gateway** | 80/443 | ✅ 완료 |
+| Kong Admin API | 8001 | ✅ 완료 |
 | **User Service** | 8005 | ✅ 완료 |
 | **Chat Service** | 8002 | ✅ 완료 |
 | **Friend Service** | 8003 | ✅ 완료 |
-| Notification Service | 8004 | ⏳ 대기 |
-| API Gateway | 80/443 | ⏳ 예정 |
+| Notification Service | 8004 | ⏳ 신규 |
 | Kafka UI | 8080 | 운영 중 |
 
 ---
@@ -364,5 +380,5 @@ docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
 | Week 1-2 | DDD Lite 적용 | ✅ 완료 |
 | Week 3-4 | Kafka 통합 | ✅ 완료 |
 | Week 5 | MSA 서비스 분리 | ✅ 완료 |
-| Week 6 | API Gateway 구성 | ⏳ 대기 |
+| Week 6 | API Gateway 구성 | ✅ 완료 |
 | Week 7-8 | 모니터링 & CI/CD | ⏳ 대기 |

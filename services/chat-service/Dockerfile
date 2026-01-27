@@ -1,4 +1,4 @@
-# User Service Dockerfile
+# Chat Service Dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -18,11 +18,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 포트 노출
-EXPOSE 8005
+EXPOSE 8002
 
 # 헬스체크
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:8005/health || exit 1
+    CMD curl -f http://localhost:8002/health || exit 1
 
 # 애플리케이션 실행
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8005"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]

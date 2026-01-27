@@ -1,0 +1,299 @@
+version: '3.8'
+
+# =============================================================================
+# BigTech Chat MSA - Full Stack
+# 전체 마이크로서비스 아키텍처를 한 번에 실행
+#
+# 사용법:
+#   docker-compose -f docker-compose.msa.yml up -d
+#   docker-compose -f docker-compose.msa.yml down
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Infrastructure - Databases
+  # ===========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: bigtech-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bigtech_chat
+      MYSQL_USER: chatuser
+      MYSQL_PASSWORD: chatpassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:6.0
+    container_name: bigtech-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+      MONGO_INITDB_DATABASE: bigtech_chat
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: bigtech-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # Infrastructure - Kafka (단일 브로커, 개발용)
+  # ===========================================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: bigtech-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+    networks:
+      - bigtech-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: bigtech-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:19092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:19092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - bigtech-network
+
+  # ===========================================================================
+  # API Gateway - Kong
+  # ===========================================================================
+  kong-database:
+    image: postgres:15-alpine
+    container_name: bigtech-kong-db
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kongpass
+      POSTGRES_DB: kong
+    volumes:
+      - kong-db-data:/var/lib/postgresql/data
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kong-migrations:
+    image: kong:3.5
+    container_name: bigtech-kong-migrations
+    command: kong migrations bootstrap
+    depends_on:
+      kong-database:
+        condition: service_healthy
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+      KONG_PG_DATABASE: kong
+    networks:
+      - bigtech-network
+    restart: on-failure
+
+  kong:
+    image: kong:3.5
+    container_name: bigtech-kong
+    depends_on:
+      kong-database:
+        condition: service_healthy
+      kong-migrations:
+        condition: service_completed_successfully
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+      KONG_PG_DATABASE: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    ports:
+      - "80:8000"       # HTTP Proxy
+      - "443:8443"      # HTTPS Proxy
+      - "8001:8001"     # Admin API
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # ===========================================================================
+  # MSA Services
+  # ===========================================================================
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: bigtech-user-service
+    ports:
+      - "8005:8005"
+    environment:
+      - APP_NAME=User Service
+      - HOST=0.0.0.0
+      - PORT=8005
+      - DEBUG=false
+      - MYSQL_URL=mysql+aiomysql://chatuser:chatpassword@mysql:3306/bigtech_chat
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_HOURS=2
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  friend-service:
+    build:
+      context: ./services/friend-service
+      dockerfile: Dockerfile
+    container_name: bigtech-friend-service
+    ports:
+      - "8003:8003"
+    environment:
+      - APP_NAME=Friend Service
+      - HOST=0.0.0.0
+      - PORT=8003
+      - DEBUG=false
+      - MYSQL_URL=mysql+aiomysql://chatuser:chatpassword@mysql:3306/bigtech_chat
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_HOURS=2
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  chat-service:
+    build:
+      context: ./services/chat-service
+      dockerfile: Dockerfile
+    container_name: bigtech-chat-service
+    ports:
+      - "8002:8002"
+    environment:
+      - APP_NAME=Chat Service
+      - HOST=0.0.0.0
+      - PORT=8002
+      - DEBUG=false
+      - MYSQL_URL=mysql+aiomysql://chatuser:chatpassword@mysql:3306/bigtech_chat
+      - MONGO_URL=mongodb://admin:adminpassword@mongodb:27017
+      - MONGODB_DB_NAME=bigtech_chat
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_HOURS=2
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_MESSAGE_EVENTS=message.events
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Management UIs
+  # ===========================================================================
+  kafka-ui:
+    image: tchiotludo/akhq:latest
+    container_name: bigtech-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            bigtech-kafka:
+              properties:
+                bootstrap.servers: "kafka:9092"
+    networks:
+      - bigtech-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  mysql-data:
+  mongodb-data:
+  redis-data:
+  zookeeper-data:
+  kafka-data:
+  kong-db-data:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  bigtech-network:
+    driver: bridge
