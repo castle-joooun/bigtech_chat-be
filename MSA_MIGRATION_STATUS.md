@@ -11,7 +11,7 @@
 |------|------|------|--------|
 | Week 1-2 | DDD Lite 적용 | ✅ 완료 | 100% |
 | Week 3-4 | Kafka 통합 | ✅ 완료 | 100% |
-| Week 5 | MSA 서비스 분리 | 🚧 진행중 | 60% |
+| Week 5 | MSA 서비스 분리 | 🚧 진행중 | 75% |
 | Week 6 | API Gateway 구성 | ⏳ 대기 | 0% |
 | Week 7-8 | 모니터링 & CI/CD | ⏳ 대기 | 0% |
 
@@ -57,7 +57,7 @@
 
 ## 🚧 진행 중 작업
 
-### API 마이그레이션 (60% 완료)
+### API 마이그레이션 (75% 완료)
 
 #### User Service - ✅ 완료
 - ✅ 인증 API 이동 (register, login, logout)
@@ -70,15 +70,25 @@
   - 사용자명/표시명 검색
   - 복수 사용자 조회
 
-#### Friend Service - 🚧 진행중 (기본 구조 완료)
+#### Friend Service - ✅ 완료
 - ✅ 디렉토리 구조 및 공통 모듈
 - ✅ Models (Friendship, BlockUser)
-- ⏳ 친구 관계 API 이동 (request, accept, reject, delete)
-- ⏳ 차단 API 이동
+- ✅ 친구 관계 API 이동 (request, accept, reject, cancel)
+  - POST /friends/request - 친구 요청
+  - PUT /friends/status/{requester_user_id} - 수락/거절
+  - GET /friends/list - 친구 목록
+  - GET /friends/requests - 친구 요청 목록
+  - DELETE /friends/request/{target_user_id} - 요청 취소
+- ✅ 사용자 검색 API (GET /friends/search)
+- ✅ FriendshipService 비즈니스 로직 완성
+- ✅ JWT 인증 통합
 
-#### Chat Service - ⏳ 대기
+#### Chat Service - 🚧 진행중 (기본 구조 완료)
+- ✅ 디렉토리 구조 및 공통 모듈
+- ✅ Models (ChatRoom, Message, RoomMember)
 - ⏳ 채팅방 API 이동
 - ⏳ 메시지 API 이동 (send, read, stream)
+- ⏳ Kafka Producer 통합
 
 #### Notification Service - ⏳ 대기
 - ⏳ 알림 API 이동
@@ -148,8 +158,8 @@
 │ User Service │  │ Chat Service │  │Friend Service│  │Notification  │
 │   (8005)     │  │   (8002)     │  │   (8003)     │  │  Service     │
 │              │  │              │  │              │  │   (8004)     │
-│ ✅ 구조 완성  │  │ ✅ 구조 완성  │  │ ✅ 구조 완성  │  │ ✅ 구조 완성  │
-│ ⏳ API 이동   │  │ ⏳ API 이동   │  │ ⏳ API 이동   │  │ ⏳ API 이동   │
+│ ✅ 완전 동작  │  │ 🚧 구조 완성  │  │ ✅ 완전 동작  │  │ ✅ 구조 완성  │
+│ ✅ API 완료   │  │ ⏳ API 이동   │  │ ✅ API 완료   │  │ ⏳ API 이동   │
 └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
        │                 │                 │                 │
        └─────────────────┴─────────────────┴─────────────────┘
