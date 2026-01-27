@@ -1,5 +1,5 @@
 """
-User Service Configuration
+Friend Service Configuration
 
 환경 변수를 통한 설정 관리
 """
@@ -9,16 +9,16 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    """User Service 설정"""
+    """Friend Service 설정"""
 
     # Application
-    app_name: str = "User Service"
+    app_name: str = "Friend Service"
     version: str = "1.0.0"
     debug: bool = True
 
     # Server
     host: str = "0.0.0.0"
-    port: int = 8001
+    port: int = 8003
 
     # Database - MySQL
     mysql_url: str
@@ -28,8 +28,7 @@ class Settings(BaseSettings):
 
     # Kafka
     kafka_bootstrap_servers: str = "localhost:19092,localhost:19093,localhost:19094"
-    kafka_topic_user_events: str = "user.events"
-    kafka_topic_user_online_status: str = "user.online_status"
+    kafka_topic_friend_events: str = "friend.events"
 
     # JWT
     secret_key: str
