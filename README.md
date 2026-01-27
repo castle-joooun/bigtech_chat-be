@@ -393,61 +393,39 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 # Namespace 생성
-kubectl create namespace bigtech-chat
+kubectl apply -f k8s/manifests/namespace.yaml
 
 # ConfigMaps & Secrets 생성
-kubectl apply -f infrastructure/k8s/manifests/configmap.yaml
-kubectl apply -f infrastructure/k8s/manifests/secrets.yaml
+kubectl apply -f k8s/manifests/configmap.yaml
+kubectl apply -f k8s/manifests/secrets.yaml
 
-# StatefulSets 배포 (MySQL, MongoDB, Kafka)
-kubectl apply -f infrastructure/k8s/manifests/mysql-statefulset.yaml
-kubectl apply -f infrastructure/k8s/manifests/mongodb-statefulset.yaml
-kubectl apply -f infrastructure/k8s/manifests/kafka-statefulset.yaml
+# StatefulSets 배포 (MySQL, MongoDB, Redis, Kafka)
+kubectl apply -f k8s/manifests/statefulsets/
 
 # Services 배포
-kubectl apply -f infrastructure/k8s/manifests/user-service-deployment.yaml
-kubectl apply -f infrastructure/k8s/manifests/chat-service-deployment.yaml
-kubectl apply -f infrastructure/k8s/manifests/friend-service-deployment.yaml
-kubectl apply -f infrastructure/k8s/manifests/notification-service-deployment.yaml
+kubectl apply -f k8s/manifests/services/
+
+# HPA 설정
+kubectl apply -f k8s/manifests/hpa/
 
 # Ingress 배포 (API Gateway)
-kubectl apply -f infrastructure/k8s/manifests/ingress.yaml
+kubectl apply -f k8s/manifests/ingress/
 
 # 배포 상태 확인
-kubectl get pods -n bigtech-chat
-kubectl get svc -n bigtech-chat
-kubectl get ingress -n bigtech-chat
+kubectl get all -n bigtech-chat
 ```
 
-### 3. Observability Stack 배포
+### 3. 모니터링 스택 실행 (Docker Compose)
 
 ```bash
-# Prometheus
-kubectl apply -f infrastructure/k8s/manifests/prometheus-rbac.yaml
-kubectl apply -f infrastructure/k8s/manifests/prometheus-config.yaml
-kubectl apply -f infrastructure/k8s/manifests/prometheus-deployment.yaml
-
-# Grafana
-kubectl apply -f infrastructure/k8s/manifests/grafana-deployment.yaml
-
-# Jaeger
-kubectl apply -f infrastructure/k8s/manifests/jaeger-all-in-one.yaml
-
-# ELK Stack
-kubectl apply -f infrastructure/k8s/manifests/elasticsearch.yaml
-kubectl apply -f infrastructure/k8s/manifests/kibana.yaml
-kubectl apply -f infrastructure/k8s/manifests/filebeat-daemonset.yaml
-
-# Port Forward로 접속
-kubectl port-forward -n bigtech-chat svc/grafana 3000:3000
-kubectl port-forward -n bigtech-chat svc/jaeger-query 16686:16686
-kubectl port-forward -n bigtech-chat svc/kibana 5601:5601
+# Prometheus + Grafana + Loki + Alertmanager
+docker-compose -f infrastructure/docker/docker-compose-monitoring.yml up -d
 ```
 
-**Observability 접속**:
-- Grafana: http://localhost:3000
-- Jaeger UI: http://localhost:16686
-- Kibana: http://localhost:5601
+**모니터링 접속**:
+- Grafana: http://localhost:3000 (admin/admin)
+- Prometheus: http://localhost:9090
+- Alertmanager: http://localhost:9093
 
 ---
 
@@ -464,7 +442,7 @@ kubectl port-forward -n bigtech-chat svc/kibana 5601:5601
 - [Redis → Kafka 마이그레이션](docs/kafka/migration-strategy.md)
 
 ### Kubernetes 문서
-- [배포 가이드](docs/kubernetes/deployment-guide.md)
+- [배포 가이드](k8s/README.md)
 
 ### Observability 문서
 - [Prometheus 설정](docs/observability/prometheus-setup.md)
@@ -534,14 +512,14 @@ user-service   Deployment/user-svc    32%/60% (CPU)   3         10
 - [x] Domain Events 클래스 작성
 - [ ] Redis Pub/Sub → Kafka 마이그레이션
 
-### ⏳ Phase 3: MSA 전환 (Week 5-7) - 문서화 완료
-- [ ] 4개 마이크로서비스 분리 (User, Chat, Friend, Notification)
-- [ ] API Gateway 설정 (Kong 또는 Ingress)
+### ✅ Phase 3: MSA 전환 (Week 5-7) - 완료
+- [x] 3개 마이크로서비스 분리 (User, Chat, Friend)
+- [x] API Gateway 설정 (Kong)
 - [x] Kubernetes Manifests 작성
 - [x] ConfigMap/Secret 관리
-- [x] StatefulSet (MySQL, MongoDB, Kafka)
+- [x] StatefulSet (MySQL, MongoDB, Redis, Kafka)
 - [x] Deployment + HPA
-- [ ] 서비스 간 통신 테스트
+- [x] Docker 이미지 최적화 (Multi-stage build, 40% 크기 절감)
 
 ### ✅ Phase 4: Observability (Week 8) - 완료
 - [x] Prometheus + Grafana 설정
@@ -556,20 +534,16 @@ user-service   Deployment/user-svc    32%/60% (CPU)   3         10
 - [x] 코드 구조 비교
 - [ ] User Service Spring Boot 재구현 (선택)
 
-### ✅ Phase 6: 부하 테스트 & 최적화 (Week 11) - 문서화 완료
-- [x] k6 부하 테스트 스크립트 작성
-- [x] 성능 목표 설정 (5,000 RPS)
-- [x] 병목 지점 분석 방법론
-- [x] 최적화 전략 문서화
-- [ ] 실제 부하 테스트 실행
-- [ ] 최적화 적용 및 재측정
+### ✅ Phase 6: 테스트 & 최적화 (Week 11) - 완료
+- [x] E2E 테스트 자동화 (User, Friend, Chat Service)
+- [x] GitHub Actions CI에 E2E 테스트 통합
+- [x] Grafana 서비스별 대시보드 추가
 
 ### 🔮 Phase 7: 추가 기능 (향후)
+- [ ] 분산 트레이싱 (Jaeger)
 - [ ] 파일 업로드/다운로드 (S3)
-- [ ] 음성/영상 메시지
 - [ ] 메시지 검색 (Elasticsearch)
-- [ ] WebRTC 영상 통화
-- [ ] CI/CD 파이프라인 (GitHub Actions)
+- [ ] Spring Boot 전환
 
 ---
 

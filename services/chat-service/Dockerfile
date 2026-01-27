@@ -1,21 +1,47 @@
-# Chat Service Dockerfile
-FROM python:3.11-slim
+# Chat Service Dockerfile (Multi-stage Build)
+# ============================================
 
-WORKDIR /app
+# Stage 1: Builder
+FROM python:3.11-slim AS builder
 
-# 시스템 의존성 설치
+WORKDIR /build
+
+# 빌드에 필요한 시스템 의존성 설치
 RUN apt-get update && apt-get install -y \
     gcc \
     libffi-dev \
-    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Python 가상환경 생성
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Python 의존성 설치
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+
+# Stage 2: Runtime
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+# curl만 설치 (헬스체크용)
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash appuser
+
+# 빌드된 가상환경 복사
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # 애플리케이션 코드 복사
-COPY . .
+COPY --chown=appuser:appuser . .
+
+# 비-root 사용자로 전환
+USER appuser
 
 # 포트 노출
 EXPOSE 8002

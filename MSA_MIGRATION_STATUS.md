@@ -195,8 +195,10 @@
 - [Aggregate 설계](./docs/architecture/02-aggregate-design.md)
 - [Domain Events](./docs/architecture/03-domain-events.md)
 - [MSA 마이그레이션 전략](./docs/architecture/04-msa-migration.md)
-- [Kafka 설정](./docs/kafka/01-kafka-setup.md)
-- [서비스 README](./services/README.md)
+- [Kafka Topic 설계](./docs/kafka/topic-design.md)
+- [Kubernetes 배포 가이드](./k8s/README.md)
+- [Dockerfile 최적화](./docs/optimization/01-dockerfile-optimization.md)
+- [빠른 시작 가이드](./docs/QUICK_START.md)
 
 ---
 
