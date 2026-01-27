@@ -3,6 +3,7 @@
 이 디렉토리는 Monolithic 애플리케이션을 MSA로 분리한 마이크로서비스들을 포함합니다.
 
 > **마지막 업데이트**: 2026-01-27
+> **상태**: ✅ **MSA 마이그레이션 완료**
 
 ---
 
@@ -324,7 +325,21 @@ chmod +x infrastructure/docker/kong/kong-config.sh
 docker-compose -f docker-compose.msa.yml down
 ```
 
-### 5. Kafka 클러스터만 실행 (개발용)
+### 5. 모니터링 스택 실행
+
+```bash
+# 모니터링 스택 (Prometheus, Grafana, Loki, Alertmanager)
+docker-compose -f infrastructure/docker/docker-compose-monitoring.yml up -d
+```
+
+**접속 URL:**
+| 서비스 | URL | 비고 |
+|--------|-----|------|
+| Grafana | http://localhost:3000 | admin/admin |
+| Prometheus | http://localhost:9090 | |
+| Alertmanager | http://localhost:9093 | |
+
+### 6. Kafka 클러스터만 실행 (개발용)
 
 ```bash
 docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
@@ -332,7 +347,7 @@ docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
 
 ---
 
-## 다음 단계
+## 완료 상태
 
 ### 1단계: 핵심 API 마이그레이션 (✅ 완료)
 - [x] User Service API 완성
@@ -362,14 +377,18 @@ docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
 
 | 서비스 | Port | 상태 |
 |--------|------|------|
-| Monolithic API | 8000 | 운영 중 (레거시) |
 | **Kong API Gateway** | 80/443 | ✅ 완료 |
 | Kong Admin API | 8001 | ✅ 완료 |
 | **User Service** | 8005 | ✅ 완료 |
 | **Chat Service** | 8002 | ✅ 완료 |
 | **Friend Service** | 8003 | ✅ 완료 |
 | Notification Service | 8004 | ⏳ 신규 |
-| Kafka UI | 8080 | 운영 중 |
+| Prometheus | 9090 | ✅ 완료 |
+| Grafana | 3000 | ✅ 완료 |
+| Loki | 3100 | ✅ 완료 |
+| Alertmanager | 9093 | ✅ 완료 |
+| Kafka UI | 8080 | ✅ 완료 |
+| Monolithic API | 8000 | ⚠️ 레거시 (deprecated) |
 
 ---
 
@@ -381,4 +400,6 @@ docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
 | Week 3-4 | Kafka 통합 | ✅ 완료 |
 | Week 5 | MSA 서비스 분리 | ✅ 완료 |
 | Week 6 | API Gateway 구성 | ✅ 완료 |
-| Week 7-8 | 모니터링 & CI/CD | ⏳ 대기 |
+| Week 7-8 | 모니터링 & CI/CD | ✅ 완료 |
+
+### MSA 마이그레이션 100% 완료
