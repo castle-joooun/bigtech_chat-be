@@ -92,9 +92,9 @@
 - ⏳ 실시간 알림 SSE 스트리밍
 - ⏳ Kafka Consumer 연동 (friend.events, message.events)
 
-### 추가 개선 사항
-- ⏳ Kafka Producer 통합 (각 서비스)
-- ⏳ 분산 트레이싱 (Jaeger)
+### 추가 개선 사항 (추후)
+- ✅ Kafka Producer 통합 (각 서비스) - 완료
+- ⏳ 분산 트레이싱 (Jaeger) - 추후 검토
 - ⏳ E2E 테스트 자동화
 
 ---
