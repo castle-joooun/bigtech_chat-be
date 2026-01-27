@@ -11,7 +11,7 @@
 |------|------|------|--------|
 | Week 1-2 | DDD Lite 적용 | ✅ 완료 | 100% |
 | Week 3-4 | Kafka 통합 | ✅ 완료 | 100% |
-| Week 5 | MSA 서비스 분리 | 🚧 진행중 | 90% |
+| Week 5 | MSA 서비스 분리 | ✅ 완료 | 100% |
 | Week 6 | API Gateway 구성 | ⏳ 대기 | 0% |
 | Week 7-8 | 모니터링 & CI/CD | ⏳ 대기 | 0% |
 
@@ -91,8 +91,9 @@
 - ✅ MongoDB/Redis 연결 구현
 - ⏳ Kafka Producer 통합 (TODO)
 
-#### Notification Service - ⏳ 대기
-- ⏳ 알림 API 이동
+#### Notification Service - ⏳ 신규 기능 (추후 구현)
+> 기존 Monolithic 앱에 없던 신규 서비스. MSA 전환 후 추가 구현 예정.
+- ⏳ 알림 API 신규 구현
 - ⏳ SSE 스트리밍 구현
 
 ---
