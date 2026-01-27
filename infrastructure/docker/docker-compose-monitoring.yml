@@ -118,3 +118,4 @@ volumes:
 networks:
   bigtech-network:
     external: true
+    name: bigtech_chat-be_bigtech-network
