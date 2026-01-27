@@ -8,8 +8,7 @@ from app.schemas.user import (
     UserProfile,
     ProfileUpdateRequest,
     UserSearchRequest,
-    UserSearchResponse,
-    OnlineStatusUpdate
+    UserSearchResponse
 )
 from app.api.auth import get_current_user
 from app.services import auth_service, file_service
@@ -195,74 +194,3 @@ async def delete_profile_image(
         )
 
 
-@router.put("/status", response_model=UserProfile)
-async def update_online_status(
-    status_data: OnlineStatusUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_session)
-) -> UserProfile:
-    """
-    사용자의 온라인 상태를 업데이트합니다.
-
-    Args:
-        status_data: 온라인 상태 정보
-        current_user: 현재 인증된 사용자
-        db: 데이터베이스 세션
-
-    Returns:
-        UserProfile: 업데이트된 프로필 정보
-    """
-    try:
-        # 온라인 상태 업데이트
-        updated_user = await auth_service.update_online_status(
-            db=db,
-            user_id=current_user.id,
-            is_online=status_data.is_online
-        )
-
-        if not updated_user:
-            raise ResourceNotFoundException("User")
-
-        return UserProfile.model_validate(updated_user)
-
-    except Exception as e:
-        logger.error(f"Error updating online status: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update online status"
-        )
-
-
-@router.post("/last-seen")
-async def update_last_seen(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """
-    사용자의 마지막 접속 시간을 현재 시간으로 업데이트합니다.
-
-    Args:
-        current_user: 현재 인증된 사용자
-        db: 데이터베이스 세션
-
-    Returns:
-        dict: 성공 메시지
-    """
-    try:
-        # 마지막 접속 시간 업데이트
-        updated_user = await auth_service.update_last_seen(
-            db=db,
-            user_id=current_user.id
-        )
-
-        if not updated_user:
-            raise ResourceNotFoundException("User")
-
-        return {"message": "Last seen updated successfully"}
-
-    except Exception as e:
-        logger.error(f"Error updating last seen: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update last seen"
-        )

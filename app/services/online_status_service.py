@@ -19,7 +19,7 @@ ONLINE_USERS_SET = "online_users"
 USER_WEBSOCKET_KEY = "user:websocket:{user_id}"
 
 # TTL 설정 (초)
-ONLINE_STATUS_TTL = 300  # 5분 (heartbeat 없으면 자동 오프라인)
+ONLINE_STATUS_TTL = 60  # 1분 (테스트용 - 원래는 300초/5분)
 LAST_SEEN_TTL = 86400 * 7  # 7일 (마지막 접속 시간 보관)
 
 
@@ -267,6 +267,8 @@ class OnlineStatusService:
         """
         사용자 활동 시간 업데이트 (heartbeat)
 
+        온라인 상태가 없으면 (TTL 만료) 자동으로 다시 온라인 상태로 설정합니다.
+
         Args:
             user_id: 사용자 ID
 
@@ -276,18 +278,78 @@ class OnlineStatusService:
         try:
             redis = await get_redis()
             online_key = USER_ONLINE_KEY.format(user_id=user_id)
+            current_time = datetime.utcnow().isoformat()
 
             # 온라인 상태 확인
             online_data = await redis.get(online_key)
-            if not online_data:
-                return False
 
-            # 활동 시간 업데이트
+            if not online_data:
+                # 오프라인 상태 (TTL 만료) → 다시 온라인으로 설정
+                logger.info(f"User {user_id} was offline, setting back to online via activity")
+
+                # 파이프라인으로 원자적 연산
+                pipe = redis.pipeline()
+
+                # 1. 온라인 상태 설정
+                status_data = {
+                    "user_id": user_id,
+                    "status": "online",
+                    "last_activity": current_time,
+                    "connected_at": current_time
+                }
+                pipe.setex(online_key, ONLINE_STATUS_TTL, json.dumps(status_data))
+
+                # 2. 온라인 사용자 집합에 추가
+                pipe.sadd(ONLINE_USERS_SET, user_id)
+
+                await pipe.execute()
+
+                # 3. Redis Pub/Sub으로 온라인 상태 브로드캐스트
+                await redis.publish(
+                    f"user:status:{user_id}",
+                    json.dumps({
+                        "user_id": user_id,
+                        "is_online": True,
+                        "timestamp": current_time
+                    })
+                )
+
+                return True
+
+            # 이미 온라인 상태 → 활동 시간만 업데이트
             status_data = json.loads(online_data)
-            status_data["last_activity"] = datetime.utcnow().isoformat()
+            old_activity = status_data.get("last_activity", "")
+            status_data["last_activity"] = current_time
 
             # TTL 연장
             await redis.setex(online_key, ONLINE_STATUS_TTL, json.dumps(status_data))
+
+            # 주기적 브로드캐스트 (마지막 활동으로부터 10초 이상 지난 경우)
+            # 친구들에게 "아직 온라인이다"라는 신호를 보냄
+            should_broadcast = True
+            if old_activity:
+                try:
+                    old_time = datetime.fromisoformat(old_activity)
+                    current_dt = datetime.fromisoformat(current_time)
+                    time_diff = (current_dt - old_time).total_seconds()
+
+                    # 10초 이내에 이미 업데이트된 경우 브로드캐스트 생략
+                    if time_diff < 10:
+                        should_broadcast = False
+                except:
+                    pass
+
+            if should_broadcast:
+                # Redis Pub/Sub으로 활동 상태 브로드캐스트
+                await redis.publish(
+                    f"user:status:{user_id}",
+                    json.dumps({
+                        "user_id": user_id,
+                        "is_online": True,
+                        "timestamp": current_time
+                    })
+                )
+                logger.debug(f"Broadcasted activity update for user {user_id}")
 
             return True
 

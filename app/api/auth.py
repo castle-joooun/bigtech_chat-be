@@ -56,6 +56,7 @@ async def get_current_user(
         raise user_not_found_error(user_id)
 
     # 사용자 활동 시간 업데이트 (heartbeat)
+    # 이 함수가 온라인 상태도 함께 업데이트하고 브로드캐스트함
     await update_activity(user.id)
 
     return user

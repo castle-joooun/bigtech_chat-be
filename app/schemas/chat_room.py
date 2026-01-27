@@ -15,19 +15,20 @@ class ChatRoomCreate(BaseModel):
 
 
 class ChatRoomResponse(BaseModel):
-    """1:1 채팅방 응답 스키마 (단순화된 MVP 버전)"""
+    """1:1 채팅방 응답 스키마 (개선된 버전)"""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int = Field(..., description="채팅방 ID")
     user_1_id: int = Field(..., description="사용자 1 ID")
     user_2_id: int = Field(..., description="사용자 2 ID")
     room_type: str = Field(default="direct", description="채팅방 타입")
     created_at: datetime = Field(..., description="생성일시")
     updated_at: datetime = Field(..., description="수정일시")
-    
-    # 테스트에서 필요한 추가 필드들
+
+    # 추가 정보
     participants: Optional[List[dict]] = Field(default=None, description="참여자 정보")
-    last_message: Optional[str] = Field(default=None, description="마지막 메시지")
+    last_message: Optional[dict] = Field(default=None, description="마지막 메시지 정보")
+    unread_count: int = Field(default=0, description="읽지 않은 메시지 수")
 
 
 # ChatRoomListItem 스키마는 MVP에서 제거됨 (복잡한 개인화 기능 제거)
