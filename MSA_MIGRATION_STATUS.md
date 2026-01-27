@@ -11,7 +11,7 @@
 |------|------|------|--------|
 | Week 1-2 | DDD Lite 적용 | ✅ 완료 | 100% |
 | Week 3-4 | Kafka 통합 | ✅ 완료 | 100% |
-| Week 5 | MSA 서비스 분리 | 🚧 진행중 | 75% |
+| Week 5 | MSA 서비스 분리 | 🚧 진행중 | 90% |
 | Week 6 | API Gateway 구성 | ⏳ 대기 | 0% |
 | Week 7-8 | 모니터링 & CI/CD | ⏳ 대기 | 0% |
 
@@ -83,12 +83,13 @@
 - ✅ FriendshipService 비즈니스 로직 완성
 - ✅ JWT 인증 통합
 
-#### Chat Service - 🚧 진행중 (기본 구조 완료)
+#### Chat Service - ✅ 완료
 - ✅ 디렉토리 구조 및 공통 모듈
 - ✅ Models (ChatRoom, Message, RoomMember)
-- ⏳ 채팅방 API 이동
-- ⏳ 메시지 API 이동 (send, read, stream)
-- ⏳ Kafka Producer 통합
+- ✅ 채팅방 API 이동 (목록 조회, 조회/생성)
+- ✅ 메시지 API 이동 (send, read, stream, unread-count)
+- ✅ MongoDB/Redis 연결 구현
+- ⏳ Kafka Producer 통합 (TODO)
 
 #### Notification Service - ⏳ 대기
 - ⏳ 알림 API 이동
@@ -158,8 +159,8 @@
 │ User Service │  │ Chat Service │  │Friend Service│  │Notification  │
 │   (8005)     │  │   (8002)     │  │   (8003)     │  │  Service     │
 │              │  │              │  │              │  │   (8004)     │
-│ ✅ 완전 동작  │  │ 🚧 구조 완성  │  │ ✅ 완전 동작  │  │ ✅ 구조 완성  │
-│ ✅ API 완료   │  │ ⏳ API 이동   │  │ ✅ API 완료   │  │ ⏳ API 이동   │
+│ ✅ 완전 동작  │  │ ✅ 완전 동작  │  │ ✅ 완전 동작  │  │ ✅ 구조 완성  │
+│ ✅ API 완료   │  │ ✅ API 완료   │  │ ✅ API 완료   │  │ ⏳ API 이동   │
 └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
        │                 │                 │                 │
        └─────────────────┴─────────────────┴─────────────────┘
@@ -282,4 +283,4 @@ python test_kafka.py
 문제가 발생하거나 질문이 있으면 GitHub Issues에 등록해주세요.
 
 **마지막 업데이트**: 2026-01-27
-**커밋 해시**: `bfb5786`
+**문서 버전**: v1.1
