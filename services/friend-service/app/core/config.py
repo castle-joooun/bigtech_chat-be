@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     mysql_url: str
 
     # Database - Redis
-    redis_url: str
+    redis_url: str = "redis://localhost:6379"
 
     # Kafka
     kafka_bootstrap_servers: str = "localhost:19092,localhost:19093,localhost:19094"
@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 settings = Settings()

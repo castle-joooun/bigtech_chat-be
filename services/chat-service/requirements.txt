@@ -23,8 +23,9 @@ aiokafka>=0.9.0
 # SSE
 sse-starlette>=1.8.0
 
-# JWT
+# JWT & Auth
 python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
 
 # HTTP Client
 httpx>=0.25.0

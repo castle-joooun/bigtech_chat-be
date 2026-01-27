@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # 추가 환경변수 무시
 
 
 settings = Settings()
