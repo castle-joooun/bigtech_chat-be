@@ -350,11 +350,11 @@ docker-compose -f infrastructure/docker/docker-compose-kafka.yml up -d
 - [x] 서비스별 Dockerfile 생성
 - [x] 서비스 간 네트워크 설정
 
-### 4단계: 모니터링 & CI/CD
-- [ ] Prometheus + Grafana 설정
-- [ ] 중앙 로깅 (ELK Stack)
-- [ ] 분산 트레이싱 (Jaeger)
-- [ ] CI/CD 파이프라인 (GitHub Actions)
+### 4단계: 모니터링 & CI/CD (✅ 완료)
+- [x] Prometheus + Grafana 설정
+- [x] 중앙 로깅 (Loki + Promtail)
+- [x] Alertmanager 알림 설정
+- [x] CI/CD 파이프라인 (GitHub Actions)
 
 ---
 
