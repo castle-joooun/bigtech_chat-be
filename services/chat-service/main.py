@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.database.mongodb import init_mongodb, close_mongodb
+from app.database.mysql import init_mysql_db, close_mysql_db
 from app.database.redis import init_redis, close_redis
 from app.kafka.producer import get_event_producer
 
@@ -19,6 +20,9 @@ async def lifespan(app: FastAPI):
     """Application lifecycle management"""
     # Startup
     print(f"🚀 {settings.app_name} starting up...")
+
+    # Initialize MySQL database (create tables if not exist)
+    await init_mysql_db()
 
     # MongoDB 초기화
     await init_mongodb()
@@ -34,6 +38,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print(f"🛑 {settings.app_name} shutting down...")
+
+    # Close MySQL connection pool
+    await close_mysql_db()
 
     # Close MongoDB connection
     await close_mongodb()

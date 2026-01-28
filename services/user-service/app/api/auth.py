@@ -11,6 +11,7 @@ from app.schemas.user import UserCreate, UserLogin, UserResponse, Token, TokenDa
 from app.utils.auth import (
     verify_password,
     get_password_hash,
+    get_password_hash_async,
     create_access_token,
     decode_access_token
 )
@@ -101,8 +102,8 @@ async def register(
     if await auth_service.is_username_exists(db, user_data.username):
         raise username_already_exists_error()
 
-    # 비밀번호 해싱 및 사용자 생성
-    password_hash = get_password_hash(user_data.password)
+    # 비밀번호 해싱 (비동기로 처리하여 이벤트 루프 블로킹 방지)
+    password_hash = await get_password_hash_async(user_data.password)
     user = await auth_service.create_user(
         db=db,
         email=user_data.email,

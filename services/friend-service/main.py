@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.kafka.producer import get_event_producer
+from app.database.mysql import init_mysql_db, close_mysql_db
 
 
 @asynccontextmanager
@@ -18,7 +19,8 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"🚀 {settings.app_name} starting up...")
 
-    # Database connections are initialized lazily on first request
+    # Initialize MySQL database (create tables if not exist)
+    await init_mysql_db()
 
     # Initialize Kafka Producer
     producer = get_event_producer()
@@ -28,6 +30,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print(f"🛑 {settings.app_name} shutting down...")
+
+    # Close MySQL connection pool
+    await close_mysql_db()
 
     # Stop Kafka Producer
     await producer.stop()

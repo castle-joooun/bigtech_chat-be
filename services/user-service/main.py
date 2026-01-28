@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.api import auth, profile, user
 from app.services.online_status_service import close_redis
 from app.kafka.producer import get_event_producer
+from app.database.mysql import init_mysql_db, close_mysql_db
 
 
 @asynccontextmanager
@@ -20,8 +21,8 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"🚀 {settings.app_name} starting up...")
 
-    # Database connections are initialized lazily on first request
-    # Redis connection is initialized lazily on first use
+    # Initialize MySQL database (create tables if not exist)
+    await init_mysql_db()
 
     # Initialize Kafka Producer
     producer = get_event_producer()
@@ -34,6 +35,9 @@ async def lifespan(app: FastAPI):
 
     # Close Redis connection
     await close_redis()
+
+    # Close MySQL connection pool
+    await close_mysql_db()
 
     # Stop Kafka Producer
     await producer.stop()

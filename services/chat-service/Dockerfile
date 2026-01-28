@@ -50,5 +50,8 @@ EXPOSE 8002
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:8002/health || exit 1
 
-# 애플리케이션 실행
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
+# 워커 수 환경변수 (기본값 4)
+ENV WORKERS=4
+
+# 애플리케이션 실행 (Gunicorn + Uvicorn 워커로 멀티프로세스 처리)
+CMD ["sh", "-c", "gunicorn main:app -w ${WORKERS} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8002 --timeout 120"]

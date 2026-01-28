@@ -10,13 +10,15 @@ from app.core.config import settings
 Base = declarative_base()
 
 # Database engine with connection pooling
+# Increased pool_size and max_overflow for high concurrency load testing
 engine = create_async_engine(
     settings.mysql_url,
     echo=settings.debug,  # Log SQL queries in debug mode
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,  # Recycle connections after 1 hour
-    pool_pre_ping=True,  # Validate connections before use
+    pool_size=50,         # Increased from 10 for high load
+    max_overflow=100,     # Increased from 20 for burst traffic
+    pool_recycle=3600,    # Recycle connections after 1 hour
+    pool_pre_ping=True,   # Validate connections before use
+    pool_timeout=30,      # Wait up to 30s for connection
 )
 
 # Async session factory
@@ -49,11 +51,8 @@ get_async_session = get_db
 async def init_mysql_db():
     """Initialize MySQL database"""
     try:
-        # Import all models to register them with Base.metadata
-        from app.models import (
-            User, ChatRoom, RoomMember, GroupChatRoom,
-            GroupRoomMember, Friendship, BlockUser
-        )
+        # Import User model to register with Base.metadata
+        from app.models.user import User
 
         async with engine.begin() as conn:
             # Create all tables

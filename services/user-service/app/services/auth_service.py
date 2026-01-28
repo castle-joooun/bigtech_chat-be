@@ -87,14 +87,15 @@ async def is_user_exists(db: AsyncSession, user_id: int) -> bool:
 # =============================================================================
 
 async def authenticate_user_by_email(db: AsyncSession, email: str, password: str) -> Optional[User]:
-    """이메일과 비밀번호로 사용자 인증"""
-    from app.utils.auth import verify_password
+    """이메일과 비밀번호로 사용자 인증 (비동기 bcrypt 사용)"""
+    from app.utils.auth import verify_password_async
 
     user = await find_user_by_email(db, email)
     if not user:
         return None
 
-    if not verify_password(password, user.password_hash):
+    # 비동기로 비밀번호 검증 (이벤트 루프 블로킹 방지)
+    if not await verify_password_async(password, user.password_hash):
         return None
 
     return user

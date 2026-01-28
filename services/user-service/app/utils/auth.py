@@ -1,8 +1,10 @@
 import os
 import re
 import secrets
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
@@ -12,13 +14,32 @@ from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Thread pool for CPU-bound bcrypt operations
+_executor = ThreadPoolExecutor(max_workers=4)
+
 
 def verify_password(plain_password, hashed_password):
+    """Synchronous password verification (for backward compatibility)"""
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password):
+    """Synchronous password hashing (for backward compatibility)"""
     return pwd_context.hash(password)
+
+
+async def verify_password_async(plain_password: str, hashed_password: str) -> bool:
+    """Async password verification - offloads bcrypt to thread pool"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _executor, pwd_context.verify, plain_password, hashed_password
+    )
+
+
+async def get_password_hash_async(password: str) -> str:
+    """Async password hashing - offloads bcrypt to thread pool"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, pwd_context.hash, password)
 
 
 def validate_password(password: str) -> bool:
