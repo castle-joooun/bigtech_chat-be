@@ -3,7 +3,7 @@
 > **대상**: Python/FastAPI를 알고 있는 신입 개발자
 > **목표**: MSA 아키텍처를 단계별로 학습하고, Spring Boot 마이그레이션 준비
 > **학습 기간**: 약 7주 (49일)
-> **최종 업데이트**: 2026-01-27
+> **최종 업데이트**: 2026-01-28
 
 ---
 
@@ -372,6 +372,35 @@ async def get_user(user_id: int):
   요청3     ████░░░░████
   → 같은 시간에 더 많은 요청 처리 가능!
 ```
+
+### CPU-bound 작업의 비동기 처리 (bcrypt)
+
+> ⚠️ **주의**: bcrypt 같은 CPU-intensive 작업은 async/await만으로는 부족합니다!
+
+```python
+# ❌ 잘못된 방식: bcrypt가 이벤트 루프를 블로킹
+async def register(user_data: UserCreate):
+    hashed = get_password_hash(user_data.password)  # 블로킹! (200ms+)
+    # 이 동안 다른 요청 처리 불가
+
+# ✅ 올바른 방식: ThreadPoolExecutor로 별도 스레드에서 실행
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
+
+_executor = ThreadPoolExecutor(max_workers=4)
+
+async def get_password_hash_async(password: str) -> str:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, pwd_context.hash, password)
+
+async def register(user_data: UserCreate):
+    hashed = await get_password_hash_async(user_data.password)  # 논블로킹!
+    # 해싱 중에도 다른 요청 처리 가능
+```
+
+**성능 개선 효과** (실제 테스트 결과):
+- 에러율: 39% → **0%**
+- 평균 응답시간: 18.7초 → **2.7초** (85% 개선)
 
 ### Pydantic을 활용한 데이터 검증
 
@@ -1184,8 +1213,19 @@ COPY --chown=appuser:appuser . .
 USER appuser
 
 EXPOSE 8005
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8005"]
+
+# 워커 수 환경변수 (기본값 4)
+ENV WORKERS=4
+
+# Gunicorn + Uvicorn 워커로 멀티프로세스 처리
+# → 단일 uvicorn 대비 4배 동시 처리 가능
+CMD ["sh", "-c", "gunicorn main:app -w ${WORKERS} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8005 --timeout 120"]
 ```
+
+> 💡 **왜 Gunicorn을 사용할까요?**
+> - 단일 Uvicorn: 1개 프로세스로 요청 처리 (CPU-bound 작업 시 병목)
+> - Gunicorn + Uvicorn 워커: 여러 프로세스가 병렬 처리 (bcrypt 같은 CPU 작업에 유리)
+> - 성능 개선: 에러율 39%→0%, 응답시간 18초→2.7초 (85% 개선)
 
 ### Multi-stage Build의 효과
 
@@ -1773,6 +1813,27 @@ class UserController(private val userService: UserService) {
 | `SQLAlchemy` | Spring Data JPA | ORM |
 | `Beanie` | Spring Data MongoDB | MongoDB ODM |
 
+### 실제 성능 비교 결과 (2026-01-28 테스트)
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│          FastAPI vs Spring Boot 성능 비교 (100 VUs, 2분)        │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  처리량:     FastAPI 727 vs Spring Boot 1,743 (2.4배 차이)     │
+│  응답속도:   FastAPI 2.7초 vs Spring Boot 0.7초 (4배 차이)      │
+│  에러율:     둘 다 0%                                          │
+│                                                                │
+│  💡 결론:                                                      │
+│  - CPU 작업(bcrypt): Spring Boot가 4배 빠름                    │
+│  - I/O 작업(DB조회): FastAPI가 12배 빠름                       │
+│  - 전체 처리량: Spring Boot가 2.4배 높음                       │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+```
+
+> 📊 **상세 보고서**: [성능 비교 보고서](./testing/PERFORMANCE_COMPARISON_REPORT.md)
+
 ### 언어와 무관한 것들 (100% 재사용 가능)
 
 ```
@@ -1990,8 +2051,8 @@ pytest --html=report.html
 
 ---
 
-**문서 버전**: v1.0
-**최종 업데이트**: 2026-01-27
+**문서 버전**: v1.1
+**최종 업데이트**: 2026-01-28
 **작성자**: Claude Code
 
 ---

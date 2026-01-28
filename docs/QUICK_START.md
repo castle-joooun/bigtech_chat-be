@@ -1,6 +1,6 @@
 # 빠른 시작 가이드
 
-> **작성일**: 2026-01-27
+> **작성일**: 2026-01-28
 
 ---
 
@@ -132,4 +132,76 @@ docker logs bigtech-chat-service -f
 
 ---
 
-**마지막 업데이트**: 2026-01-27
+---
+
+## 부하 테스트 (k6)
+
+### k6 설치
+```bash
+# macOS
+brew install k6
+
+# 또는 Docker
+docker pull grafana/k6
+```
+
+### FastAPI User Flow 테스트
+```bash
+# 서비스 실행 확인
+curl http://localhost:8005/health
+
+# k6 테스트 실행 (2분, 최대 100 VUs)
+k6 run - <<'EOF'
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  stages: [
+    { duration: '30s', target: 50 },
+    { duration: '1m', target: 100 },
+    { duration: '30s', target: 0 },
+  ],
+};
+
+const BASE_URL = 'http://localhost:8005';
+
+export default function () {
+  const user = {
+    email: `user_${Date.now()}_${Math.random().toString(36).substring(7)}@test.com`,
+    username: `user_${Date.now()}`,
+    password: 'TestPass123!',
+    display_name: 'Test User',
+  };
+
+  // Register
+  let res = http.post(`${BASE_URL}/auth/register`, JSON.stringify(user), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  check(res, { 'register ok': (r) => r.status === 201 });
+
+  sleep(0.5);
+
+  // Login
+  res = http.post(`${BASE_URL}/auth/login/json`, JSON.stringify({
+    email: user.email,
+    password: user.password,
+  }), { headers: { 'Content-Type': 'application/json' } });
+  check(res, { 'login ok': (r) => r.status === 200 });
+
+  sleep(1);
+}
+EOF
+```
+
+### 성능 기준
+| 지표 | 목표 | FastAPI (최적화 후) |
+|------|------|---------------------|
+| 에러율 | < 1% | 0% ✅ |
+| 평균 응답시간 | < 3초 | 2.7초 ✅ |
+| P95 응답시간 | < 10초 | 7.8초 ✅ |
+
+> 📊 **상세 성능 비교**: [FastAPI vs Spring Boot 비교 보고서](./testing/PERFORMANCE_COMPARISON_REPORT.md)
+
+---
+
+**마지막 업데이트**: 2026-01-28

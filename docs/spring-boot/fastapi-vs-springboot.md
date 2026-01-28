@@ -564,45 +564,76 @@ suspend fun getUserWithFriends(
 
 ## 성능 비교
 
-### 벤치마크 환경
-- **서버**: 4 CPU, 8GB RAM
-- **부하**: k6 (1000 VUs, 1분)
-- **엔드포인트**: `POST /api/users/login`
+### 벤치마크 환경 (2026-01-28 실측)
+- **환경**: Docker Compose (MacBook Apple Silicon)
+- **부하 도구**: k6 v0.44.1
+- **테스트 시나리오**: User Flow (회원가입 → 로그인 → 프로필 조회)
+- **부하 패턴**: 30초 ramp-up → 60초 100 VUs 유지 → 30초 ramp-down
 
-### FastAPI (uvicorn --workers 4)
-
-```
-Requests/sec:   8,500
-Avg Latency:    115ms
-P95 Latency:    230ms
-P99 Latency:    450ms
-Memory Usage:   450MB
-```
-
-### Spring Boot (WebFlux, JVM -Xmx1g)
+### FastAPI (Gunicorn 4 Workers + 비동기 bcrypt)
 
 ```
-Requests/sec:   12,000
-Avg Latency:    80ms
-P95 Latency:    180ms
-P99 Latency:    350ms
-Memory Usage:   650MB
+Total Iterations:  727
+Total Requests:    2,181
+Error Rate:        0.00%
+
+Avg Response:      2,684ms
+P95 Response:      7,842ms
+Max Response:      9,598ms
+
+Registration Avg:  3,975ms
+Login Avg:         4,070ms
+Profile Avg:       8ms
 ```
 
-### 성능 분석
+### Spring Boot (Tomcat 400 threads, HikariCP 50 connections)
 
-| 항목 | FastAPI | Spring Boot | 승자 |
-|------|---------|-------------|------|
-| **처리량 (RPS)** | 8,500 | 12,000 | Spring Boot (+41%) |
-| **응답 시간 (P95)** | 230ms | 180ms | Spring Boot (-22%) |
-| **메모리 사용량** | 450MB | 650MB | FastAPI (-30%) |
-| **콜드 스타트** | 0.5초 | 2.5초 | FastAPI (5배 빠름) |
-| **개발 생산성** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | FastAPI |
+```
+Total Iterations:  1,743
+Total Requests:    5,229
+Error Rate:        0.00%
+
+Avg Response:      658ms
+P95 Response:      2,504ms
+Max Response:      6,202ms
+
+Registration Avg:  956ms
+Login Avg:         921ms
+Profile Avg:       97ms
+```
+
+### 성능 분석 (실측 결과)
+
+| 항목 | FastAPI | Spring Boot | 차이 | 승자 |
+|------|---------|-------------|------|------|
+| **처리량 (iterations)** | 727 | 1,743 | +139% | 🏆 Spring Boot |
+| **평균 응답시간** | 2,684ms | 658ms | -75% | 🏆 Spring Boot |
+| **P95 응답시간** | 7,842ms | 2,504ms | -68% | 🏆 Spring Boot |
+| **Registration** | 3,975ms | 956ms | 4.2× 빠름 | 🏆 Spring Boot |
+| **Login (bcrypt)** | 4,070ms | 921ms | 4.4× 빠름 | 🏆 Spring Boot |
+| **Profile (I/O)** | 8ms | 97ms | 12× 빠름 | 🏆 FastAPI |
+| **에러율** | 0% | 0% | - | 동점 |
+| **콜드 스타트** | ~1초 | ~5초 | 5× 빠름 | 🏆 FastAPI |
+| **개발 생산성** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | - | FastAPI |
+
+### 분석 결과
+
+**Spring Boot가 빠른 이유 (CPU-bound 작업)**:
+1. **JVM BCrypt 최적화**: JIT 컴파일로 네이티브 성능에 근접
+2. **스레드 풀**: Tomcat 400 threads vs Gunicorn 4 workers
+3. **HikariCP**: 고성능 커넥션 풀
+
+**FastAPI가 빠른 이유 (I/O-bound 작업)**:
+1. **비동기 I/O**: async/await로 DB 대기 시간 최소화
+2. **경량 런타임**: 오버헤드 최소화
+3. **단순 조회**: 스레드 컨텍스트 스위칭 비용 없음
 
 **결론**:
-- **고성능 요구사항**: Spring Boot 우위 (WebFlux + Netty)
-- **경량/빠른 시작**: FastAPI 우위 (Python 인터프리터)
-- **메모리 효율성**: FastAPI 우위
+- **CPU-intensive 작업 (bcrypt 등)**: Spring Boot **4배** 우위
+- **I/O-intensive 작업 (DB 조회)**: FastAPI **12배** 우위
+- **전체 처리량**: Spring Boot **2.4배** 우위
+
+> 📊 **상세 테스트 보고서**: [성능 비교 보고서](../testing/PERFORMANCE_COMPARISON_REPORT.md)
 
 ---
 
