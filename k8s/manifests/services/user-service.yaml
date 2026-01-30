@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: bigtech-chat
+  labels:
+    app: user-service
+    app.kubernetes.io/name: user-service
+    app.kubernetes.io/part-of: bigtech-chat-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8005"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: user-service
+          image: ghcr.io/your-org/bigtech-user-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8005
+              name: http
+          env:
+            - name: MYSQL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: MYSQL_HOST
+            - name: MYSQL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: MYSQL_PORT
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: MYSQL_DATABASE
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: bigtech-chat-secrets
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bigtech-chat-secrets
+                  key: MYSQL_PASSWORD
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: REDIS_PORT
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: KAFKA_TOPIC_USER_EVENTS
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: KAFKA_TOPIC_USER_EVENTS
+            - name: KAFKA_TOPIC_USER_ONLINE_STATUS
+              valueFrom:
+                configMapKeyRef:
+                  name: bigtech-chat-config
+                  key: KAFKA_TOPIC_USER_ONLINE_STATUS
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bigtech-chat-secrets
+                  key: SECRET_KEY
+            - name: ALGORITHM
+              valueFrom:
+                secretKeyRef:
+                  name: bigtech-chat-secrets
+                  key: ALGORITHM
+            - name: ACCESS_TOKEN_EXPIRE_HOURS
+              valueFrom:
+                secretKeyRef:
+                  name: bigtech-chat-secrets
+                  key: ACCESS_TOKEN_EXPIRE_HOURS
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      imagePullSecrets:
+        - name: ghcr-credentials
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: bigtech-chat
+  labels:
+    app: user-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8005
+      targetPort: 8005
+      protocol: TCP
+      name: http
+  selector:
+    app: user-service

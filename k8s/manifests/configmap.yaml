@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bigtech-chat-config
+  namespace: bigtech-chat
+  labels:
+    app.kubernetes.io/name: bigtech-chat
+data:
+  # Database
+  MYSQL_HOST: "mysql"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "bigtech_chat"
+
+  MONGODB_HOST: "mongodb"
+  MONGODB_PORT: "27017"
+  MONGODB_DATABASE: "bigtech_chat"
+
+  # Redis
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # Kafka
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-0.kafka-headless:9092,kafka-1.kafka-headless:9092,kafka-2.kafka-headless:9092"
+  KAFKA_TOPIC_USER_EVENTS: "user.events"
+  KAFKA_TOPIC_USER_ONLINE_STATUS: "user.online_status"
+  KAFKA_TOPIC_FRIEND_EVENTS: "friend.events"
+  KAFKA_TOPIC_MESSAGE_EVENTS: "message.events"
+  KAFKA_TOPIC_CHAT_EVENTS: "chat.events"
+
+  # Service URLs (for inter-service communication)
+  USER_SERVICE_URL: "http://user-service:8005"
+  FRIEND_SERVICE_URL: "http://friend-service:8003"
+  CHAT_SERVICE_URL: "http://chat-service:8002"
+
+  # Logging
+  LOG_LEVEL: "INFO"

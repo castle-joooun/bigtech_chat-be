@@ -1,0 +1,36 @@
+# Chat Service Requirements
+
+# FastAPI
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+gunicorn>=23.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Database - MySQL
+sqlalchemy>=2.0.0
+aiomysql>=0.2.0
+cryptography>=44.0.0
+
+# Database - MongoDB
+motor>=3.3.0
+beanie>=1.23.0
+
+# Database - Redis
+redis>=5.0.0
+
+# Kafka
+aiokafka>=0.9.0
+
+# SSE
+sse-starlette>=1.8.0
+
+# JWT & Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# HTTP Client
+httpx>=0.25.0
+
+# Metrics
+prometheus-fastapi-instrumentator>=6.1.0

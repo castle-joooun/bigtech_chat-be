@@ -1,0 +1,234 @@
+# Docker Compose for E2E Testing
+# Usage: docker-compose -f docker-compose.test.yml up -d
+
+version: '3.8'
+
+services:
+  # ===================
+  # Databases
+  # ===================
+  mysql-test:
+    image: mysql:8.0
+    container_name: bigtech-mysql-test
+    environment:
+      MYSQL_ROOT_PASSWORD: testroot
+      MYSQL_DATABASE: bigtech_chat_test
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  mongodb-test:
+    image: mongo:7.0
+    container_name: bigtech-mongodb-test
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: testuser
+      MONGO_INITDB_ROOT_PASSWORD: testpass
+      MONGO_INITDB_DATABASE: bigtech_chat_test
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: bigtech-redis-test
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # ===================
+  # Kafka (Single broker for testing)
+  # ===================
+  kafka-test:
+    image: bitnami/kafka:3.6
+    container_name: bigtech-kafka-test
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-test:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-test:9092
+      - KAFKA_KRAFT_CLUSTER_ID=test-cluster-id
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    ports:
+      - "9093:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - test-network
+
+  # ===================
+  # Services
+  # ===================
+  user-service-test:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: bigtech-user-service-test
+    environment:
+      - MYSQL_HOST=mysql-test
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=bigtech_chat_test
+      - MYSQL_USER=testuser
+      - MYSQL_PASSWORD=testpass
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-test:9092
+      - KAFKA_TOPIC_USER_EVENTS=user.events.test
+      - KAFKA_TOPIC_USER_ONLINE_STATUS=user.online_status.test
+      - SECRET_KEY=test-secret-key-for-jwt
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_HOURS=24
+    ports:
+      - "8015:8005"
+    depends_on:
+      mysql-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      kafka-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  friend-service-test:
+    build:
+      context: ./services/friend-service
+      dockerfile: Dockerfile
+    container_name: bigtech-friend-service-test
+    environment:
+      - MYSQL_HOST=mysql-test
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=bigtech_chat_test
+      - MYSQL_USER=testuser
+      - MYSQL_PASSWORD=testpass
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-test:9092
+      - KAFKA_TOPIC_FRIEND_EVENTS=friend.events.test
+      - USER_SERVICE_URL=http://user-service-test:8005
+      - SECRET_KEY=test-secret-key-for-jwt
+      - ALGORITHM=HS256
+    ports:
+      - "8013:8003"
+    depends_on:
+      mysql-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      kafka-test:
+        condition: service_healthy
+      user-service-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  chat-service-test:
+    build:
+      context: ./services/chat-service
+      dockerfile: Dockerfile
+    container_name: bigtech-chat-service-test
+    environment:
+      - MONGODB_HOST=mongodb-test
+      - MONGODB_PORT=27017
+      - MONGODB_DATABASE=bigtech_chat_test
+      - MONGODB_USER=testuser
+      - MONGODB_PASSWORD=testpass
+      - MYSQL_HOST=mysql-test
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=bigtech_chat_test
+      - MYSQL_USER=testuser
+      - MYSQL_PASSWORD=testpass
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-test:9092
+      - KAFKA_TOPIC_MESSAGE_EVENTS=message.events.test
+      - KAFKA_TOPIC_CHAT_EVENTS=chat.events.test
+      - USER_SERVICE_URL=http://user-service-test:8005
+      - SECRET_KEY=test-secret-key-for-jwt
+      - ALGORITHM=HS256
+    ports:
+      - "8012:8002"
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+      mysql-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      kafka-test:
+        condition: service_healthy
+      user-service-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # ===================
+  # Test Runner
+  # ===================
+  e2e-tests:
+    build:
+      context: ./tests/e2e
+      dockerfile: Dockerfile
+    container_name: bigtech-e2e-tests
+    environment:
+      - USER_SERVICE_URL=http://user-service-test:8005
+      - FRIEND_SERVICE_URL=http://friend-service-test:8003
+      - CHAT_SERVICE_URL=http://chat-service-test:8002
+    volumes:
+      - ./tests/e2e:/app/tests
+      - ./test-results:/app/test-results
+    depends_on:
+      user-service-test:
+        condition: service_healthy
+      friend-service-test:
+        condition: service_healthy
+      chat-service-test:
+        condition: service_healthy
+    networks:
+      - test-network
+    command: pytest /app/tests -v --html=/app/test-results/report.html --self-contained-html
+
+networks:
+  test-network:
+    driver: bridge

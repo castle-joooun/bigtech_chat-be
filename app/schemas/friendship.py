@@ -53,11 +53,12 @@ class FriendshipStatusUpdate(BaseModel):
 class FriendListResponse(BaseModel):
     """친구 목록 응답 스키마"""
     model_config = ConfigDict(from_attributes=True)
-    
+
     user_id: int = Field(..., description="친구 사용자 ID")
     username: str = Field(..., description="친구 사용자명")
     email: str = Field(..., description="친구 이메일")
-    friendship_created_at: datetime = Field(..., description="친구 관계 시작일")
+    last_seen_at: Optional[datetime] = Field(None, description="마지막 접속 시간")
+    last_seen_display: str = Field(..., description="마지막 접속 시간 (상대적 표기)")
 
 
 class FriendRequestListResponse(BaseModel):

@@ -1,0 +1,329 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Zookeeper (Kafka 클러스터 관리)
+  # =============================================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    hostname: zookeeper
+    container_name: bigtech-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # Kafka Broker 1
+  # =============================================================================
+  kafka-1:
+    image: confluentinc/cp-kafka:7.6.0
+    hostname: kafka-1
+    container_name: bigtech-kafka-1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://localhost:19092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:19092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_RETENTION_HOURS: 168  # 7 days
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
+      KAFKA_COMPRESSION_TYPE: snappy
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: kafka-1
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # Kafka Broker 2
+  # =============================================================================
+  kafka-2:
+    image: confluentinc/cp-kafka:7.6.0
+    hostname: kafka-2
+    container_name: bigtech-kafka-2
+    depends_on:
+      - zookeeper
+    ports:
+      - "9093:9093"
+      - "19093:19093"
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9093,PLAINTEXT_HOST://localhost:19093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:19093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_COMPRESSION_TYPE: snappy
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: kafka-2
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # Kafka Broker 3
+  # =============================================================================
+  kafka-3:
+    image: confluentinc/cp-kafka:7.6.0
+    hostname: kafka-3
+    container_name: bigtech-kafka-3
+    depends_on:
+      - zookeeper
+    ports:
+      - "9094:9094"
+      - "19094:19094"
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9094,PLAINTEXT_HOST://localhost:19094
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094,PLAINTEXT_HOST://0.0.0.0:19094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_COMPRESSION_TYPE: snappy
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: kafka-3
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # Kafka Topic 생성 (초기화)
+  # =============================================================================
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: bigtech-kafka-init
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    entrypoint: ['/bin/sh', '-c']
+    command: |
+      "
+      echo 'Waiting for Kafka to be ready...'
+      cub kafka-ready -b kafka-1:9092 3 60
+
+      echo 'Creating Kafka topics...'
+
+      # user.events (사용자 이벤트)
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic user.events \
+        --partitions 3 \
+        --replication-factor 3 \
+        --config retention.ms=604800000 \
+        --config compression.type=snappy
+
+      # user.online_status (온라인 상태)
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic user.online_status \
+        --partitions 6 \
+        --replication-factor 3 \
+        --config retention.ms=3600000 \
+        --config compression.type=lz4
+
+      # friend.events (친구 이벤트)
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic friend.events \
+        --partitions 3 \
+        --replication-factor 3 \
+        --config retention.ms=604800000 \
+        --config compression.type=snappy
+
+      # chat.events (채팅방 이벤트)
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic chat.events \
+        --partitions 3 \
+        --replication-factor 3 \
+        --config retention.ms=604800000 \
+        --config compression.type=snappy
+
+      # message.events (메시지 이벤트 - High Throughput)
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic message.events \
+        --partitions 10 \
+        --replication-factor 3 \
+        --config retention.ms=604800000 \
+        --config compression.type=snappy
+
+      # notification.events (알림 이벤트)
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic notification.events \
+        --partitions 3 \
+        --replication-factor 3 \
+        --config retention.ms=604800000 \
+        --config compression.type=snappy
+
+      # Dead Letter Queues
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic user.events.dlq \
+        --partitions 1 \
+        --replication-factor 3 \
+        --config retention.ms=2592000000
+
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic friend.events.dlq \
+        --partitions 1 \
+        --replication-factor 3 \
+        --config retention.ms=2592000000
+
+      kafka-topics --create --if-not-exists \
+        --bootstrap-server kafka-1:9092 \
+        --topic message.events.dlq \
+        --partitions 1 \
+        --replication-factor 3 \
+        --config retention.ms=2592000000
+
+      echo 'Topics created successfully!'
+      kafka-topics --list --bootstrap-server kafka-1:9092
+      "
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # Kafka UI (AKHQ) - 웹 기반 Kafka 관리 도구
+  # =============================================================================
+  kafka-ui:
+    image: tchiotludo/akhq:latest
+    container_name: bigtech-kafka-ui
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    ports:
+      - "8080:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            bigtech-kafka:
+              properties:
+                bootstrap.servers: "kafka-1:9092,kafka-2:9093,kafka-3:9094"
+              schema-registry:
+                url: ""
+              connect:
+                - name: ""
+                  url: ""
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # MySQL (기존)
+  # =============================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: bigtech-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bigtech_chat
+      MYSQL_USER: chatuser
+      MYSQL_PASSWORD: chatpassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # MongoDB (기존)
+  # =============================================================================
+  mongodb:
+    image: mongo:6.0
+    container_name: bigtech-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+      MONGO_INITDB_DATABASE: bigtech_chat
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - bigtech-network
+
+  # =============================================================================
+  # Redis (기존)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: bigtech-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - bigtech-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  zookeeper-data:
+    driver: local
+  zookeeper-logs:
+    driver: local
+  kafka-1-data:
+    driver: local
+  kafka-2-data:
+    driver: local
+  kafka-3-data:
+    driver: local
+  mysql-data:
+    driver: local
+  mongodb-data:
+    driver: local
+  redis-data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  bigtech-network:
+    driver: bridge

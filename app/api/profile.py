@@ -8,8 +8,7 @@ from app.schemas.user import (
     UserProfile,
     ProfileUpdateRequest,
     UserSearchRequest,
-    UserSearchResponse,
-    OnlineStatusUpdate
+    UserSearchResponse
 )
 from app.api.auth import get_current_user
 from app.services import auth_service, file_service
@@ -102,7 +101,7 @@ async def update_my_profile(
         )
 
 
-@router.post("/upload-image", response_model=UserProfile)
+@router.post("/me/image", response_model=UserProfile)
 async def upload_profile_image(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -150,7 +149,7 @@ async def upload_profile_image(
         )
 
 
-@router.delete("/image", response_model=UserProfile)
+@router.delete("/me/image", response_model=UserProfile)
 async def delete_profile_image(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
@@ -195,125 +194,3 @@ async def delete_profile_image(
         )
 
 
-@router.put("/status", response_model=UserProfile)
-async def update_online_status(
-    status_data: OnlineStatusUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_session)
-) -> UserProfile:
-    """
-    사용자의 온라인 상태를 업데이트합니다.
-
-    Args:
-        status_data: 온라인 상태 정보
-        current_user: 현재 인증된 사용자
-        db: 데이터베이스 세션
-
-    Returns:
-        UserProfile: 업데이트된 프로필 정보
-    """
-    try:
-        # 온라인 상태 업데이트
-        updated_user = await auth_service.update_online_status(
-            db=db,
-            user_id=current_user.id,
-            is_online=status_data.is_online
-        )
-
-        if not updated_user:
-            raise ResourceNotFoundException("User")
-
-        return UserProfile.model_validate(updated_user)
-
-    except Exception as e:
-        logger.error(f"Error updating online status: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update online status"
-        )
-
-
-@router.post("/last-seen")
-async def update_last_seen(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """
-    사용자의 마지막 접속 시간을 현재 시간으로 업데이트합니다.
-
-    Args:
-        current_user: 현재 인증된 사용자
-        db: 데이터베이스 세션
-
-    Returns:
-        dict: 성공 메시지
-    """
-    try:
-        # 마지막 접속 시간 업데이트
-        updated_user = await auth_service.update_last_seen(
-            db=db,
-            user_id=current_user.id
-        )
-
-        if not updated_user:
-            raise ResourceNotFoundException("User")
-
-        return {"message": "Last seen updated successfully"}
-
-    except Exception as e:
-        logger.error(f"Error updating last seen: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update last seen"
-        )
-
-
-@router.get("/search/users", response_model=UserSearchResponse)
-async def search_users(
-    query: str = Query(..., min_length=1, max_length=50, description="검색 키워드"),
-    limit: int = Query(default=10, ge=1, le=50, description="검색 결과 개수"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_session)
-) -> UserSearchResponse:
-    """
-    사용자명으로 사용자를 검색합니다.
-
-    Args:
-        query: 검색 키워드 (사용자명 또는 표시명)
-        limit: 검색 결과 개수
-        current_user: 현재 인증된 사용자
-        db: 데이터베이스 세션
-
-    Returns:
-        UserSearchResponse: 검색 결과
-    """
-    try:
-        # 사용자 검색 (현재 사용자 제외)
-        users = await auth_service.search_users_by_username(
-            db=db,
-            query=query,
-            limit=limit,
-            exclude_user_id=current_user.id
-        )
-
-        # 전체 검색 결과 수 조회
-        total_count = await auth_service.get_user_count_by_query(
-            db=db,
-            query=query,
-            exclude_user_id=current_user.id
-        )
-
-        # UserProfile 형태로 변환
-        user_profiles = [UserProfile.model_validate(user) for user in users]
-
-        return UserSearchResponse(
-            users=user_profiles,
-            total_count=total_count
-        )
-
-    except Exception as e:
-        logger.error(f"Error searching users: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to search users"
-        )

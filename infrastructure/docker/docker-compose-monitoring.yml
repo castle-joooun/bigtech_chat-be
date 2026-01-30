@@ -1,0 +1,121 @@
+version: '3.8'
+
+# =============================================================================
+# Monitoring Stack
+# Prometheus + Grafana + Loki (로깅)
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Prometheus - 메트릭 수집
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: bigtech-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Grafana - 시각화 대시보드
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: bigtech-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Loki - 로그 수집
+  # ===========================================================================
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: bigtech-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Promtail - 로그 수집 에이전트
+  # ===========================================================================
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: bigtech-promtail
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Alertmanager - 알림 관리
+  # ===========================================================================
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: bigtech-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  alertmanager-data:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  bigtech-network:
+    external: true
+    name: bigtech_chat-be_bigtech-network

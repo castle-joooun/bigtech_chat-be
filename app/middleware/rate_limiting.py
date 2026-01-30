@@ -49,6 +49,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not self.enabled:
             return await call_next(request)
 
+        # OPTIONS 요청 제외 (CORS preflight)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # 예외 경로 확인
         if request.url.path in self.excluded_paths:
             return await call_next(request)
@@ -189,6 +193,10 @@ class AdvancedRateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if not settings.rate_limit_enabled:
+            return await call_next(request)
+
+        # OPTIONS 요청 제외 (CORS preflight)
+        if request.method == "OPTIONS":
             return await call_next(request)
 
         # 기본 제한 적용

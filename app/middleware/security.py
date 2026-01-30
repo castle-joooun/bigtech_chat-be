@@ -58,13 +58,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def _build_csp_policy(self) -> str:
         """Content Security Policy 구성"""
         if settings.debug:
-            # 개발 환경: 더 관대한 정책
+            # 개발 환경: 더 관대한 정책 (Swagger UI CDN 허용)
             return (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-                "style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data: blob:; "
-                "font-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: blob: https://fastapi.tiangolo.com; "
+                "font-src 'self' https://cdn.jsdelivr.net; "
                 "connect-src 'self' ws: wss:; "
                 "media-src 'self'; "
                 "object-src 'none'; "

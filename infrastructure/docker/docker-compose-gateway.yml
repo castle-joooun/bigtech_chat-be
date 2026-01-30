@@ -1,0 +1,123 @@
+version: '3.8'
+
+# =============================================================================
+# API Gateway Stack
+# Kong Gateway + PostgreSQL (Kong 데이터베이스)
+# =============================================================================
+
+services:
+  # =============================================================================
+  # Kong Database (PostgreSQL)
+  # =============================================================================
+  kong-database:
+    image: postgres:15-alpine
+    container_name: bigtech-kong-db
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kongpass
+      POSTGRES_DB: kong
+    volumes:
+      - kong-db-data:/var/lib/postgresql/data
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # Kong Migrations (초기화)
+  # =============================================================================
+  kong-migrations:
+    image: kong:3.5
+    container_name: bigtech-kong-migrations
+    command: kong migrations bootstrap
+    depends_on:
+      kong-database:
+        condition: service_healthy
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+      KONG_PG_DATABASE: kong
+    networks:
+      - bigtech-network
+    restart: on-failure
+
+  # =============================================================================
+  # Kong Gateway
+  # =============================================================================
+  kong:
+    image: kong:3.5
+    container_name: bigtech-kong
+    depends_on:
+      kong-database:
+        condition: service_healthy
+      kong-migrations:
+        condition: service_completed_successfully
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+      KONG_PG_DATABASE: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+      # CORS 설정
+      KONG_HEADERS: X-Real-IP, X-Forwarded-For, X-Forwarded-Proto
+    ports:
+      - "80:8000"      # HTTP Proxy (클라이언트 요청)
+      - "443:8443"     # HTTPS Proxy
+      - "8001:8001"    # Admin API
+      - "8444:8444"    # Admin API SSL
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # =============================================================================
+  # Konga (Kong Admin UI)
+  # =============================================================================
+  konga:
+    image: pantsel/konga:latest
+    container_name: bigtech-konga
+    depends_on:
+      - kong
+    environment:
+      NODE_ENV: production
+      TOKEN_SECRET: your-secret-token-here
+      DB_ADAPTER: postgres
+      DB_HOST: kong-database
+      DB_PORT: 5432
+      DB_USER: kong
+      DB_PASSWORD: kongpass
+      DB_DATABASE: konga
+    ports:
+      - "1337:1337"    # Konga Admin UI
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  kong-db-data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  bigtech-network:
+    external: true
