@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.bigtech.chat.chat.controller.ChatRoomControllerTest
--------------------------------------------------------------------------------
-Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 28.62 s -- in com.bigtech.chat.chat.controller.ChatRoomControllerTest
