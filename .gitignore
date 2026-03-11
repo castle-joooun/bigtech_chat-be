@@ -1,0 +1,52 @@
+# === IDE ===
+.idea/
+*.iml
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Java / Spring Boot / Maven ===
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# === Environment ===
+.env
+.env.*
+!.env.example
+
+# === Docker ===
+docker-compose.override.yml
+
+# === Test / Coverage ===
+.coverage
+htmlcov/
+.pytest_cache/
+surefire-reports/
+
+# === Claude ===
+.claude/
+**/target/
+*.jar
+*.war
