@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bigtech-chat
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - mysql.yaml
+  - mongodb.yaml
+  - redis.yaml
+  - kafka.yaml
+  - user-service.yaml
+  - friend-service.yaml
+  - chat-service.yaml
+  - hpa.yaml
+  - ingress.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: bigtech-chat-platform

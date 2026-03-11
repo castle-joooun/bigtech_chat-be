@@ -1,0 +1,24 @@
+# =============================================================================
+# Production 환경 설정
+# =============================================================================
+# 활성화: --spring.profiles.active=prod 또는 SPRING_PROFILES_ACTIVE=prod
+
+spring:
+  datasource:
+    hikari:
+      # FastAPI와 동일 수준: pool_size=50, max_overflow=100
+      maximum-pool-size: 50
+      minimum-idle: 10
+      idle-timeout: 600000      # 10분
+      connection-timeout: 30000  # 30초
+      max-lifetime: 1800000     # 30분
+
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    root: INFO
+    com.bigtech.chat.chat: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.data.mongodb: WARN

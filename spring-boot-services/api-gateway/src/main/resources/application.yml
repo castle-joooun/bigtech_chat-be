@@ -1,0 +1,109 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      # 글로벌 필터 설정
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+      # 라우팅 설정
+      routes:
+        # User Service
+        - id: user-service-auth
+          uri: ${USER_SERVICE_URL:http://localhost:8005}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+
+        - id: user-service-users
+          uri: ${USER_SERVICE_URL:http://localhost:8005}
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+
+        - id: user-service-profile
+          uri: ${USER_SERVICE_URL:http://localhost:8005}
+          predicates:
+            - Path=/api/profile/**
+          filters:
+            - StripPrefix=0
+
+        # Friend Service
+        - id: friend-service
+          uri: ${FRIEND_SERVICE_URL:http://localhost:8003}
+          predicates:
+            - Path=/api/friends/**
+          filters:
+            - StripPrefix=0
+
+        # Chat Service - Chat Rooms
+        - id: chat-service-rooms
+          uri: ${CHAT_SERVICE_URL:http://localhost:8002}
+          predicates:
+            - Path=/api/chat-rooms/**
+          filters:
+            - StripPrefix=0
+
+        # Chat Service - Messages
+        - id: chat-service-messages
+          uri: ${CHAT_SERVICE_URL:http://localhost:8002}
+          predicates:
+            - Path=/api/messages/**
+          filters:
+            - StripPrefix=0
+
+        # Health Check Routes
+        - id: user-service-health
+          uri: ${USER_SERVICE_URL:http://localhost:8005}
+          predicates:
+            - Path=/services/user/health
+          filters:
+            - RewritePath=/services/user/health, /health
+
+        - id: friend-service-health
+          uri: ${FRIEND_SERVICE_URL:http://localhost:8003}
+          predicates:
+            - Path=/services/friend/health
+          filters:
+            - RewritePath=/services/friend/health, /health
+
+        - id: chat-service-health
+          uri: ${CHAT_SERVICE_URL:http://localhost:8002}
+          predicates:
+            - Path=/services/chat/health
+          filters:
+            - RewritePath=/services/chat/health, /health
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+jwt:
+  secret-key: ${JWT_SECRET:your-256-bit-secret-key-here-must-be-at-least-32-characters}
+  access-token-expire-hours: 24
+
+logging:
+  level:
+    root: INFO
+    com.bigtech.chat.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: when_authorized
+    gateway:
+      enabled: true

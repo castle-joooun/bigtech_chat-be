@@ -1,0 +1,114 @@
+server:
+  port: 8081
+
+# =============================================================================
+# Spring Boot 최적화 설정
+# =============================================================================
+# 1. Virtual Thread 활성화 (Java 21) → Tomcat 요청 스레드를 Virtual Thread로 전환
+# 2. bcrypt 전용 Platform Thread 풀: AsyncConfig.java (CPU 코어 기반 동적 할당)
+# 3. 비동기 타임아웃 비활성화
+# =============================================================================
+
+spring:
+  threads:
+    virtual:
+      enabled: true   # Java 21 Virtual Thread → Tomcat 요청 스레드 경량화
+  mvc:
+    async:
+      request-timeout: -1  # 타임아웃 비활성화
+  application:
+    name: user-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/bigtech_chat?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 200        # Virtual Thread 대응 (50 → 200)
+      minimum-idle: 20              # 최소 유휴 커넥션 증가
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${spring.application.name}-online-status-broadcaster
+      auto-offset-reset: latest
+      enable-auto-commit: true
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: java.util.Map
+
+# JWT 설정
+jwt:
+  secret-key: ${JWT_SECRET:your-256-bit-secret-key-here-for-hs256-algorithm-minimum-32-chars}
+  access-token-expire-hours: 24
+
+# Kafka 토픽
+kafka:
+  topics:
+    user-events: user.events
+    user-online-status: user.online_status
+
+# Actuator & Prometheus
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+
+# OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /docs
+
+# 로깅
+logging:
+  level:
+    root: INFO
+    com.bigtech.chat: DEBUG
+    org.springframework.security: DEBUG

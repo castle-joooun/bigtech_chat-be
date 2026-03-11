@@ -1,0 +1,7 @@
+/app/api-gateway/src/main/java/com/bigtech/chat/gateway/ApiGatewayApplication.java
+/app/api-gateway/src/main/java/com/bigtech/chat/gateway/config/CorsConfig.java
+/app/api-gateway/src/main/java/com/bigtech/chat/gateway/config/JwtConfig.java
+/app/api-gateway/src/main/java/com/bigtech/chat/gateway/config/RateLimiterConfig.java
+/app/api-gateway/src/main/java/com/bigtech/chat/gateway/filter/JwtAuthenticationFilter.java
+/app/api-gateway/src/main/java/com/bigtech/chat/gateway/filter/LoggingFilter.java
+/app/api-gateway/src/main/java/com/bigtech/chat/gateway/filter/RequestIdFilter.java

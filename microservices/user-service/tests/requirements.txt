@@ -1,0 +1,6 @@
+# Test dependencies for User Service
+pytest==8.4.2
+pytest-asyncio==1.0.0
+pytest-cov==7.0.0
+aiosqlite==0.21.0
+httpx==0.28.1

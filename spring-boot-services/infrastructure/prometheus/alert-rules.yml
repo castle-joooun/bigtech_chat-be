@@ -1,0 +1,108 @@
+# Prometheus Alert Rules for BigTech Chat Spring Boot MSA
+
+groups:
+  - name: bigtech-chat-spring-alerts
+    rules:
+      # Service Health
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute."
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (service)
+          /
+          sum(rate(http_server_requests_seconds_count[5m])) by (service) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Error rate is above 5% for {{ $labels.service }}"
+
+      # High Response Time
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (le, service)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.service }}"
+          description: "95th percentile response time is above 2 seconds for {{ $labels.service }}"
+
+      # JVM Memory Usage
+      - alert: HighMemoryUsage
+        expr: |
+          jvm_memory_used_bytes{area="heap"}
+          / jvm_memory_max_bytes{area="heap"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High JVM heap memory usage on {{ $labels.application }}"
+          description: "JVM heap memory usage is above 85% on {{ $labels.application }}"
+
+      # JVM Memory Critical
+      - alert: CriticalMemoryUsage
+        expr: |
+          jvm_memory_used_bytes{area="heap"}
+          / jvm_memory_max_bytes{area="heap"} > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical JVM heap memory usage on {{ $labels.application }}"
+          description: "JVM heap memory usage is above 95% on {{ $labels.application }}"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: |
+          process_cpu_usage > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.application }}"
+          description: "CPU usage is above 80% on {{ $labels.application }}"
+
+      # Database Connection Pool
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          hikaricp_connections_active / hikaricp_connections_max > 0.9
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection pool nearly exhausted on {{ $labels.application }}"
+          description: "Connection pool is above 90% utilization on {{ $labels.application }}"
+
+      # Kafka Consumer Lag (if using Kafka metrics)
+      - alert: KafkaConsumerLag
+        expr: |
+          kafka_consumer_lag > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Kafka consumer lag on {{ $labels.application }}"
+          description: "Consumer lag is above 1000 messages on {{ $labels.application }}"
+
+      # Too Many SSE Connections
+      - alert: TooManySSEConnections
+        expr: |
+          active_connections{type="sse"} > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of SSE connections on {{ $labels.application }}"
+          description: "SSE connections exceed 10000 on {{ $labels.application }}"

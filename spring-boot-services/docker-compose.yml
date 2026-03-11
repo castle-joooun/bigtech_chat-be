@@ -1,0 +1,314 @@
+version: '3.8'
+
+# =============================================================================
+# BigTech Chat MSA - Spring Boot Stack
+# 전체 마이크로서비스 아키텍처를 한 번에 실행
+#
+# 사용법:
+#   cd spring-boot-services
+#   docker-compose up -d
+#   docker-compose down
+#
+# 빌드 캐시 활용:
+#   DOCKER_BUILDKIT=1 docker-compose build
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Infrastructure - Databases
+  # ===========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: bigtech-mysql
+    ports:
+      - "3316:3306"  # 외부 포트 3316 (로컬 MySQL과 충돌 방지)
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bigtech_chat
+      MYSQL_USER: chatuser
+      MYSQL_PASSWORD: chatpassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:6.0
+    container_name: bigtech-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+      MONGO_INITDB_DATABASE: bigtech_chat
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: bigtech-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # Infrastructure - Kafka
+  # ===========================================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: bigtech-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: bigtech-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:19092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:19092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - bigtech-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ===========================================================================
+  # MSA Services - Spring Boot
+  # ===========================================================================
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: bigtech-user-service
+    ports:
+      - "8081:8081"
+    environment:
+      # Server
+      SERVER_PORT: 8081
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bigtech_chat?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: chatuser
+      SPRING_DATASOURCE_PASSWORD: chatpassword
+      # Redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production-must-be-at-least-32-characters}
+      JWT_EXPIRATION: 86400000
+      # Kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  friend-service:
+    build:
+      context: .
+      dockerfile: friend-service/Dockerfile
+    container_name: bigtech-friend-service
+    ports:
+      - "8003:8003"
+    environment:
+      # Server
+      SERVER_PORT: 8003
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bigtech_chat?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: chatuser
+      SPRING_DATASOURCE_PASSWORD: chatpassword
+      # Redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production-must-be-at-least-32-characters}
+      JWT_EXPIRATION: 86400000
+      # Kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Service Discovery
+      SERVICES_USER_SERVICE_URL: http://user-service:8081
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: chat-service/Dockerfile
+    container_name: bigtech-chat-service
+    ports:
+      - "8002:8002"
+    environment:
+      # Server
+      SERVER_PORT: 8002
+      # MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bigtech_chat?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: chatuser
+      SPRING_DATASOURCE_PASSWORD: chatpassword
+      # MongoDB
+      SPRING_DATA_MONGODB_URI: mongodb://admin:adminpassword@mongodb:27017/bigtech_chat?authSource=admin
+      # Redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production-must-be-at-least-32-characters}
+      JWT_EXPIRATION: 86400000
+      # Kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Service Discovery
+      SERVICES_USER_SERVICE_URL: http://user-service:8081
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # API Gateway - Spring Cloud Gateway
+  # ===========================================================================
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: bigtech-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      # Server
+      SERVER_PORT: 8000
+      # Redis (Rate Limiting)
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production-must-be-at-least-32-characters}
+      # Service Discovery
+      SERVICES_USER_SERVICE_URL: http://user-service:8081
+      SERVICES_FRIEND_SERVICE_URL: http://friend-service:8003
+      SERVICES_CHAT_SERVICE_URL: http://chat-service:8002
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+    depends_on:
+      user-service:
+        condition: service_healthy
+      friend-service:
+        condition: service_healthy
+      chat-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Management UIs (Optional)
+  # ===========================================================================
+  kafka-ui:
+    image: tchiotludo/akhq:latest
+    container_name: bigtech-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            bigtech-kafka:
+              properties:
+                bootstrap.servers: "kafka:9092"
+    networks:
+      - bigtech-network
+    profiles:
+      - ui
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  mysql-data:
+  mongodb-data:
+  redis-data:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  bigtech-network:
+    driver: bridge

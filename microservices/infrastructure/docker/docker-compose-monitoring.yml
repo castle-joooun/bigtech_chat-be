@@ -1,0 +1,66 @@
+version: '3.8'
+
+# =============================================================================
+# Monitoring Stack
+# Prometheus + Grafana
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Prometheus - 메트릭 수집
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: bigtech-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Grafana - 시각화 대시보드
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: bigtech-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - bigtech-network
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  prometheus-data:
+  grafana-data:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  bigtech-network:
+    external: true
+    name: bigtech_chat-be_bigtech-network

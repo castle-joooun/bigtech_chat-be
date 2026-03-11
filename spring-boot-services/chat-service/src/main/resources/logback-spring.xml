@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Logback 설정 (Spring Boot Chat Service)
+
+    프로파일별 로깅 전략:
+    - default/dev: 콘솔 출력 (사람이 읽기 쉬운 포맷)
+    - prod: JSON 구조화된 로깅 (ELK/Grafana Loki 연동)
+
+    FastAPI의 structlog JSON 로깅과 대응:
+    - MDC (Mapped Diagnostic Context)로 컨텍스트 정보 전달
+    - logstash-logback-encoder로 JSON 포맷 출력
+    - 서비스명, 이벤트 타입 등 메타데이터 자동 포함
+-->
+<configuration>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="chat-service"/>
+
+    <!-- 콘솔 출력 (개발용) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [%X{userId:-}] [%X{roomId:-}] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- JSON 구조화된 로깅 (프로덕션용) -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${APP_NAME}"}</customFields>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>roomId</includeMdcKeyName>
+            <includeMdcKeyName>messageId</includeMdcKeyName>
+            <includeMdcKeyName>eventType</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- 개발 프로파일: 콘솔 로깅 -->
+    <springProfile name="default,dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.bigtech.chat.chat" level="DEBUG"/>
+        <logger name="org.springframework.data.mongodb" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+    </springProfile>
+
+    <!-- 프로덕션 프로파일: JSON 구조화된 로깅 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+        <logger name="com.bigtech.chat.chat" level="INFO"/>
+        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.springframework.data.mongodb" level="WARN"/>
+    </springProfile>
+</configuration>

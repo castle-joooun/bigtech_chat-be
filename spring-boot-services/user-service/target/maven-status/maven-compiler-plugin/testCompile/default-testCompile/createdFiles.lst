@@ -1,0 +1,9 @@
+com/bigtech/chat/user/controller/AuthControllerTest.class
+com/bigtech/chat/user/service/AuthServiceTest$RegisterTest.class
+com/bigtech/chat/user/service/AuthServiceTest$LoginTest.class
+com/bigtech/chat/user/service/AuthServiceTest$LogoutTest.class
+com/bigtech/chat/user/config/TestConfig.class
+com/bigtech/chat/user/controller/AuthControllerTest$RegisterTest.class
+com/bigtech/chat/user/controller/AuthControllerTest$LoginFormTest.class
+com/bigtech/chat/user/service/AuthServiceTest.class
+com/bigtech/chat/user/controller/AuthControllerTest$LoginTest.class

@@ -1,0 +1,132 @@
+server:
+  port: 8002
+
+spring:
+  application:
+    name: chat-service
+
+  # MySQL for ChatRoom
+  datasource:
+    url: jdbc:mysql://localhost:3306/bigtech_chat?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # MongoDB for Messages
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/bigtech_chat}
+      auto-index-creation: true
+
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all                    # FastAPI와 동일: 모든 ISR에 복제 후 ACK → 데이터 안정성
+      compression-type: gzip       # FastAPI와 동일: 메시지 압축 → 네트워크 전송 효율
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${spring.application.name}-sse-broadcaster
+      auto-offset-reset: latest
+      enable-auto-commit: true
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: java.util.Map
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-here-must-be-at-least-32-characters}
+  expiration: 86400000  # 24 hours
+
+# 서비스 간 통신 설정
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
+
+kafka:
+  topics:
+    message-events: message.events
+
+# Resilience4j - Circuit Breaker + Retry 설정
+resilience4j:
+  circuitbreaker:
+    instances:
+      user-service:
+        register-health-indicator: true           # Actuator 헬스 체크에 노출
+        sliding-window-type: COUNT_BASED           # 최근 N개 요청 기준
+        sliding-window-size: 10                    # 최근 10개 요청으로 판단
+        failure-rate-threshold: 50                 # 50% 실패 시 OPEN
+        wait-duration-in-open-state: 60s           # 60초 후 HALF_OPEN
+        permitted-number-of-calls-in-half-open-state: 3  # HALF_OPEN에서 3번 테스트
+        minimum-number-of-calls: 5                 # 최소 5번 호출 후 판단 시작
+  retry:
+    instances:
+      user-service:
+        max-attempts: 3                            # 최대 3번 재시도
+        wait-duration: 1s                          # 첫 대기 1초
+        exponential-backoff-multiplier: 2          # 1초 → 2초 → 4초
+        retry-exceptions:
+          - org.springframework.web.client.RestClientException
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+
+logging:
+  level:
+    root: INFO
+    com.bigtech.chat.chat: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.springframework.data.mongodb: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

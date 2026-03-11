@@ -1,0 +1,73 @@
+version: '3.8'
+
+# =============================================================================
+# BigTech Chat MSA - Test Environment
+# 테스트 환경용 최소 구성
+#
+# 사용법:
+#   docker-compose -f docker-compose.test.yml up -d
+#   docker-compose -f docker-compose.test.yml down -v
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Test Infrastructure
+  # ===========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: bigtech-test-mysql
+    ports:
+      - "3317:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bigtech_chat_test
+      MYSQL_USER: chatuser
+      MYSQL_PASSWORD: chatpassword
+    tmpfs:
+      - /var/lib/mysql
+    networks:
+      - bigtech-test-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mongodb:
+    image: mongo:6.0
+    container_name: bigtech-test-mongodb
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+      MONGO_INITDB_DATABASE: bigtech_chat_test
+    tmpfs:
+      - /data/db
+    networks:
+      - bigtech-test-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: bigtech-test-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - bigtech-test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  bigtech-test-network:
+    driver: bridge

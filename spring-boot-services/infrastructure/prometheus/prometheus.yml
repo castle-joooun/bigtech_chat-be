@@ -1,0 +1,78 @@
+# Prometheus Configuration for BigTech Chat Spring Boot MSA
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'bigtech-chat-spring'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alert-rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # User Service
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['user-service:8081']
+        labels:
+          service: 'user-service'
+          environment: 'development'
+    # Docker Compose 환경이 아닌 경우 localhost 사용
+    # - targets: ['localhost:8081']
+
+  # Friend Service
+  - job_name: 'friend-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['friend-service:8003']
+        labels:
+          service: 'friend-service'
+          environment: 'development'
+
+  # Chat Service
+  - job_name: 'chat-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['chat-service:8002']
+        labels:
+          service: 'chat-service'
+          environment: 'development'
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-gateway:8000']
+        labels:
+          service: 'api-gateway'
+          environment: 'development'
+
+  # MySQL Exporter (optional)
+  # - job_name: 'mysql'
+  #   static_configs:
+  #     - targets: ['mysql-exporter:9104']
+
+  # Redis Exporter (optional)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+  # Kafka Exporter (optional)
+  # - job_name: 'kafka'
+  #   static_configs:
+  #     - targets: ['kafka-exporter:9308']

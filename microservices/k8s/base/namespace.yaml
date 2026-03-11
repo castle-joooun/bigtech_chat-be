@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bigtech-chat
+  labels:
+    app.kubernetes.io/name: bigtech-chat
+    app.kubernetes.io/part-of: bigtech-chat-platform

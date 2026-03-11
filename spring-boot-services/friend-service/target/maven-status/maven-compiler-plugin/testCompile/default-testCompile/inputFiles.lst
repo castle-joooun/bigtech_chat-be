@@ -1,0 +1,2 @@
+/app/friend-service/src/test/java/com/bigtech/chat/friend/controller/FriendControllerTest.java
+/app/friend-service/src/test/java/com/bigtech/chat/friend/service/FriendshipServiceTest.java

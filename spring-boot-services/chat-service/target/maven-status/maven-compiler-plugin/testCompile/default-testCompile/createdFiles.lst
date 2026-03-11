@@ -1,0 +1,11 @@
+com/bigtech/chat/chat/controller/ChatRoomControllerTest$1.class
+com/bigtech/chat/chat/controller/ChatRoomControllerTest.class
+com/bigtech/chat/chat/service/ChatRoomServiceTest$ValidateAccessTest.class
+com/bigtech/chat/chat/service/ChatRoomServiceTest$GetChatRoomTest.class
+com/bigtech/chat/chat/controller/ChatRoomControllerTest$GetOrCreateChatRoomTest.class
+com/bigtech/chat/chat/controller/ChatRoomControllerTest$GetChatRoomDetailTest.class
+com/bigtech/chat/chat/service/ChatRoomServiceTest$GetOrCreateChatRoomTest.class
+com/bigtech/chat/chat/service/ChatRoomServiceTest$GetChatRoomsTest.class
+com/bigtech/chat/chat/controller/ChatRoomControllerTest$GetChatRoomsTest.class
+com/bigtech/chat/chat/service/ChatRoomServiceTest.class
+com/bigtech/chat/chat/service/ChatRoomServiceTest$ExistsBetweenUsersTest.class

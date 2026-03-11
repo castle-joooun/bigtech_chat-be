@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bigtech-chat-spring-config
+data:
+  # Database Configuration
+  MYSQL_HOST: "mysql"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "bigtech_chat"
+
+  # MongoDB Configuration
+  MONGODB_HOST: "mongodb"
+  MONGODB_PORT: "27017"
+  MONGODB_DATABASE: "bigtech_chat"
+
+  # Redis Configuration
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # Kafka Configuration
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  KAFKA_ENABLED: "true"
+
+  # Kafka Topics
+  KAFKA_TOPIC_MESSAGE_EVENTS: "message.events"
+
+  # JWT Configuration
+  JWT_ACCESS_TOKEN_EXPIRE_HOURS: "24"
+
+  # Service URLs (for inter-service communication)
+  USER_SERVICE_URL: "http://user-service:8081"
+  FRIEND_SERVICE_URL: "http://friend-service:8003"
+  CHAT_SERVICE_URL: "http://chat-service:8002"
+
+  # Spring Profiles
+  SPRING_PROFILES_ACTIVE: "k8s"
+
+  # Logging
+  LOGGING_LEVEL: "INFO"

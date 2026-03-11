@@ -1,0 +1,9 @@
+# FastAPI API Gateway Dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+httpx>=0.25.0
+pydantic-settings>=2.1.0
+slowapi>=0.1.9
+prometheus-fastapi-instrumentator>=6.1.0
+python-dotenv>=1.0.0
+python-jose[cryptography]>=3.3.0

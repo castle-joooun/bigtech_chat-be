@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shared-lib"
+version = "0.1.0"
+description = "Shared library for BigTech Chat MSA services"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "sqlalchemy>=2.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+mongodb = [
+    "motor>=3.3.0",
+    "beanie>=1.23.0",
+]
+redis = [
+    "redis>=5.0.0",
+]
+kafka = [
+    "aiokafka>=0.10.0",
+]
+all = [
+    "motor>=3.3.0",
+    "beanie>=1.23.0",
+    "redis>=5.0.0",
+    "aiokafka>=0.10.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shared_lib", "shared_lib.*"]

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.bigtech.chat.user.controller.AuthControllerTest
+-------------------------------------------------------------------------------
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 33.74 s -- in com.bigtech.chat.user.controller.AuthControllerTest
